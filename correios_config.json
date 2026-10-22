@@ -1,0 +1,8 @@
+{
+  "ativo": false,
+  "usuario": "",
+  "codigo_acesso": "",
+  "cartao_postagem": "",
+  "url_base": "https://api.correios.com.br",
+  "pausa_entre_consultas_seg": 0.3
+}
