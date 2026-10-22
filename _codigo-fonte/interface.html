@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle Correios Itu</title>
+<style>
+:root {
+  --bg: #f3f4f1; --surface: #ffffff; --ink: #1b2430; --muted: #5d6673; --line: #d6d9d3;
+  --sheet-line: #1b2430; --accent: #1f4e8c; --accent-ink: #ffffff; --tag: #f2c230; --tag-ink: #1b2430;
+  --ok: #2f7a4a; --ok-bg: #e3f1e7; --warn: #9a5b00; --warn-bg: #fbefd9; --bad: #a3322a; --bad-bg: #f8e1df;
+  --drop: #e8edf4; --dot-ok: #2e9d57; --dot-pend: #e5b800;
+  --font-display: "Arial Narrow", "Segoe UI Semibold", Arial, sans-serif;
+  --font-body: "Segoe UI", Arial, sans-serif;
+  --font-mono: Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c; --surface: #1a2029; --ink: #e6e9ee; --muted: #9aa3b0; --line: #2d3541;
+    --sheet-line: #8d97a6; --accent: #7fa8e0; --accent-ink: #0d1520;
+    --ok: #6cc28c; --ok-bg: #1d3326; --warn: #e3a64a; --warn-bg: #3a2c15; --bad: #ef8a80; --bad-bg: #3d1f1c;
+    --drop: #1e2836; --dot-ok: #5cc485; --dot-pend: #f2cc3a; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); padding: 24px 20px 60px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font: 800 26px var(--font-display); margin: 0; }
+h1 .tag { background: var(--tag); color: var(--tag-ink); padding: 0 8px; border-radius: 3px; margin-left: 6px; font-size: .7em; vertical-align: 3px; }
+.sub { color: var(--muted); margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.top { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) { .top { grid-template-columns: minmax(0, 1fr); } }
+.drop { border: 2px dashed var(--accent); background: var(--drop); border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; }
+.drop.over { background: var(--surface); }
+.drop strong { font: 700 18px var(--font-display); display: block; }
+.drop span { color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.panel-title { font: 700 12px var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; }
+.pill { display: inline-block; font: 600 12px var(--font-body); border-radius: 999px; padding: 2px 10px; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.off { background: var(--warn-bg); color: var(--warn); } .pill.bad { background: var(--bad-bg); color: var(--bad); }
+.alerta { display: flex; flex-direction: column; gap: 2px; background: var(--bad-bg); color: var(--bad); border-left: 4px solid var(--bad); border-radius: 4px; padding: 8px 12px; font-size: 13px; }
+.alerta strong { font-size: 14px; }
+.pasta-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.pasta-bar .caminho { font: 13px var(--font-mono); color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+.pill.rede { background: var(--drop); color: var(--accent); }
+.alerta .small { color: var(--bad); opacity: .8; }
+.small { font-size: 13px; color: var(--muted); margin: 0; }
+progress { width: 100%; height: 8px; accent-color: var(--accent); }
+
+.btn { font: 600 14px var(--font-body); border-radius: 6px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.sm { padding: 5px 10px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible, select:focus-visible, input:focus-visible, .chip:focus-visible { outline: 3px solid var(--tag); outline-offset: 1px; }
+.result { font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.result:empty { display: none; }
+.result b.ok { color: var(--ok); } .result b.warn { color: var(--warn); }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.stat[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.stat small { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.stat b { font: 700 26px var(--font-display); font-variant-numeric: tabular-nums; }
+.stat .pct { font-size: 12px; color: var(--muted); margin-left: 6px; }
+
+.vendors { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 12px; font: 600 13px var(--font-body); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip .c { font: 12px var(--font-mono); opacity: .8; }
+.chip.zero:not([aria-pressed="true"]) { opacity: .5; }
+.chip .p { font: 600 11px var(--font-body); background: var(--warn-bg); color: var(--warn); border-radius: 999px; padding: 0 6px; }
+
+.main { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.days { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; position: sticky; top: 12px; }
+.days-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--line); }
+.days-head .row { gap: 4px; }
+.days .mini { width: auto; display: inline-block; padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; font: 600 11px var(--font-body); color: var(--accent); background: none; }
+.days ul { list-style: none; margin: 0; padding: 0; max-height: 72vh; overflow-y: auto; }
+.days button.mes { background: var(--bg); font: 700 12px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 9px 14px 9px 10px; }
+.days button.mes:hover { color: var(--ink); }
+.days button.mes[aria-expanded="true"] { color: var(--ink); }
+.days .chev { display: inline-block; width: 14px; font-size: 11px; }
+.days .n .p { font: 600 11px var(--font-body); background: var(--warn-bg); color: var(--warn); border-radius: 999px; padding: 0 6px; letter-spacing: 0; }
+.days button:focus-visible { outline: 2px solid var(--tag); outline-offset: -2px; }
+.days button { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 14px; background: none; border: 0; border-bottom: 1px solid var(--line); font: 500 14px var(--font-body); color: var(--ink); cursor: pointer; text-align: left; }
+.days button:hover { background: var(--drop); }
+.days button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); }
+.days .wd { opacity: .7; font-size: 12px; margin-left: 6px; }
+.days .n { font: 12px var(--font-mono); display: flex; gap: 6px; align-items: center; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); display: inline-block; flex: none; }
+.dot.done { background: var(--dot-ok); }
+.dot.pend { background: var(--dot-pend); }
+.cnt { display: inline-flex; align-items: center; gap: 4px; min-width: 38px; font-variant-numeric: tabular-nums; }
+.cnt.zero { opacity: .35; }
+.days .n { gap: 8px; }
+.empty { padding: 16px 14px; color: var(--muted); font-size: 13px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.tools select, .tools input { font: 14px var(--font-body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.bulk[hidden] { display: none; }
+.scroll { overflow-x: auto; }
+table.totvs { border-collapse: collapse; width: 100%; min-width: 860px; font-variant-numeric: tabular-nums; }
+table.totvs th, table.totvs td { border: 1px solid var(--sheet-line); text-align: center; padding: 4px 8px; height: 34px; }
+table.totvs td { white-space: nowrap; }
+table.totvs td.cli { white-space: normal; max-width: 280px; text-align: left; }
+.cp { font: inherit; color: inherit; background: none; border: 0; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; cursor: copy; text-align: inherit; }
+.cp:hover { background: var(--drop); text-decoration: underline dotted; text-underline-offset: 3px; }
+.cp.copiado, .cp-ic.copiado { background: var(--ok-bg); color: var(--ok); text-decoration: none; }
+.cp:focus-visible, .cp-ic:focus-visible, .falta:focus-visible { outline: 2px solid var(--tag); outline-offset: 1px; }
+.cp-ic { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: none; border: 0; border-radius: 4px; background: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+.cp-ic:hover { background: var(--drop); color: var(--accent); }
+.cli-row, .st-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.cli-row .cp { flex: 1; }
+.falta { color: var(--muted); font: italic 12px var(--font-body); background: none; border: 0; padding: 2px 4px; cursor: pointer; }
+.falta:hover { color: var(--accent); text-decoration: underline; }
+.cli-in { width: 100%; min-width: 180px; font: 14px var(--font-body); padding: 4px 6px; border: 1px solid var(--accent); border-radius: 4px; background: var(--surface); color: var(--ink); }
+table.totvs thead tr.title th { font: 700 15px var(--font-body); border-width: 2px; }
+table.totvs thead tr.cols th { font: 700 13px var(--font-body); border-width: 2px; }
+table.totvs td.mono { font-family: var(--font-mono); }
+table.totvs .chk { width: 34px; }
+.st { font: 600 13px var(--font-body); border-radius: 999px; padding: 3px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); max-width: 210px; }
+.st.s-ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.st.s-warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.st.s-bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+.ev { display: block; font-size: 11px; color: var(--muted); white-space: normal; max-width: 220px; margin: 2px auto 0; }
+.sheet-empty { color: var(--muted); padding: 28px 8px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 6px; font-weight: 500; max-width: calc(100% - 32px); z-index: 5; }
+.toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Correios Itu <span class="tag">TOTVS</span></h1>
+      <p class="sub">Arraste o relatório de dados entregues ou tabelas TOTVS antigas. Tudo entra no histórico e as tabelas do dia são gravadas na pasta Saida.</p>
+    </div>
+    <div class="row">
+      <button class="btn ghost" type="button" id="abrirPasta">Abrir pasta dos dados</button>
+      <button class="btn ghost" type="button" id="sair" title="Fecha a janela e encerra o programa">Fechar programa</button>
+    </div>
+  </header>
+
+  <div class="pasta-bar">
+    <span class="small">Pasta dos dados:</span>
+    <span class="pill" id="pastaTipo">…</span>
+    <code id="pastaCaminho" class="caminho"></code>
+    <span class="row" style="margin-left:auto">
+      <button class="btn ghost sm" type="button" id="trocarPasta" title="Escolher outra pasta, por exemplo no servidor Z:, para todos usarem a mesma">Trocar pasta…</button>
+      <button class="btn sm" type="button" id="exportarTudo" title="Salvar todas as tabelas em Ano / Mês / Dia numa pasta que você escolher">Exportar tudo…</button>
+    </span>
+  </div>
+  <div class="alerta" id="pastaAviso" role="alert" hidden></div>
+
+  <div class="top">
+    <div class="panel" style="padding:0;border:0;background:none">
+      <div id="drop" class="drop" tabindex="0" role="button" aria-label="Enviar arquivos">
+        <div>
+          <strong>Arraste aqui o DadosEntregues ou as tabelas antigas</strong>
+          <span>CSV ou .xlsx, um ou vários arquivos, ou uma pasta inteira. Nada é duplicado e os status que você já colocou são mantidos.</span>
+        </div>
+        <div class="row">
+          <button class="btn" type="button" id="pick">Escolher arquivos</button>
+          <button class="btn ghost" type="button" id="pickDir">Importar pasta</button>
+        </div>
+        <input type="file" id="file" accept=".csv,.txt,.xlsx,.xlsm" multiple hidden>
+        <input type="file" id="dir" webkitdirectory multiple hidden>
+      </div>
+      <div id="result" class="result" aria-live="polite" style="margin-top:8px"></div>
+    </div>
+
+    <div class="panel" id="correiosPanel">
+      <div class="row" style="justify-content:space-between">
+        <h2 class="panel-title">Rastreio Correios</h2>
+        <span id="cPill" class="pill off">verificando…</span>
+      </div>
+      <p class="small" id="cInfo">Consulta o último evento de cada rastreio que ainda não foi finalizado.</p>
+      <div class="alerta" id="cErro" role="alert" hidden>
+        <strong>Não foi possível consultar os Correios</strong>
+        <span id="cErroMsg"></span>
+        <span class="small" id="cErroQuando"></span>
+      </div>
+      <progress id="cProg" max="1" value="0" hidden></progress>
+      <div class="row">
+        <button class="btn sm" type="button" id="cSync" disabled>Atualizar status pelos Correios</button>
+        <button class="btn ghost sm" type="button" id="cParar" hidden>Parar</button>
+        <button class="btn ghost sm" type="button" id="cConfig">Abrir configuração</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h2 class="panel-title">Vendedores <span id="vScope" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
+      <span class="small">número = envios · laranja = sem status</span>
+    </div>
+    <div class="vendors" id="vendors"></div>
+  </div>
+
+  <div class="main">
+    <aside class="days">
+      <div class="days-head">
+        <h2 class="panel-title">Dias</h2>
+        <span class="row" id="daysTools" hidden>
+          <button type="button" class="mini" id="expandir" title="Abrir todos os meses">Expandir</button>
+          <button type="button" class="mini" id="recolher" title="Fechar todos os meses">Recolher</button>
+        </span>
+      </div>
+      <ul id="dayList"></ul>
+      <div id="noDays" class="empty">Nenhum envio ainda. Arraste o primeiro arquivo acima.</div>
+    </aside>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="panel-title" id="viewTitle">Tabela TOTVS do dia</h2>
+          <p class="small" id="viewInfo"></p>
+        </div>
+        <div class="row tools">
+          <select id="fPeriodo" aria-label="Período">
+            <option value="dia">Dia selecionado</option>
+            <option value="mes">Mês do dia</option>
+            <option value="tudo">Todo o histórico</option>
+          </select>
+          <input id="fBusca" type="search" placeholder="ERP, cliente ou rastreio" aria-label="Buscar">
+          <button class="btn ghost" type="button" id="exportar">Exportar Excel</button>
+          <button class="btn" type="button" id="abrirExcel">Abrir tabela do dia</button>
+        </div>
+      </div>
+      <div class="row bulk" id="bulk" hidden>
+        <span class="small" id="bulkN"></span>
+        <select id="bulkStatus" class="st" aria-label="Status para os selecionados"></select>
+        <button class="btn sm" type="button" id="bulkApply">Aplicar aos selecionados</button>
+        <button class="btn ghost sm" type="button" id="bulkSync">Consultar nos Correios</button>
+      </div>
+      <div class="scroll">
+        <table class="totvs">
+          <thead>
+            <tr class="title"><th class="chk" style="border:0"></th><th colspan="6" id="sheetTitle">CORREIOS ITU - TOTVS</th></tr>
+            <tr class="cols"><th class="chk"><input type="checkbox" id="chkAll" aria-label="Selecionar todos"></th><th>DATA</th><th>ERP</th><th>CLIENTE</th><th>VENDEDOR</th><th>RASTREIO</th><th>STATUS</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const STATUS = [
+  ["", ""], ["Etiqueta Emitida", "warn"], ["Postado", "warn"], ["Em trânsito", "warn"], ["Saiu para entrega", "warn"],
+  ["Aguardando retirada", "warn"], ["Entregue", "ok"], ["Retirado na Agência", "ok"],
+  ["Retornou ao Remetente", "bad"], ["Etiqueta Expirada", "bad"], ["Pedido Cancelado", "bad"], ["Trocou de Código", "warn"],
+];
+const TOM = Object.fromEntries(STATUS);
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const $ = id => document.getElementById(id);
+
+let envios = [];
+let view = { dia: null, periodo: "dia", filtro: null, vendedor: "" };  // filtro: null | "pendentes" | "entregues" | "problemas"
+let marcados = new Set();
+let mesesAbertos = null;   // meses abertos na lista de dias; null = só o mês do dia escolhido
+try { const s = JSON.parse(localStorage.getItem("meses-abertos")); if (Array.isArray(s)) mesesAbertos = new Set(s); } catch {}
+let correios = { pronto: false };
+
+const fmtBr = iso => iso.split("-").reverse().join("/");
+const mesDe = iso => { const [y, m] = iso.split("-"); return `${MESES[m - 1]} ${y}`; };
+const weekday = iso => { const [y, m, d] = iso.split("-").map(Number); return SEMANA[new Date(y, m - 1, d).getDay()]; };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tom = s => !s ? "" : (TOM[s] ?? (/^entregue/i.test(s) ? "ok" : "warn"));
+// mesma lista do correios.py: status que nao mudam mais
+const FINAIS = new Set(["Entregue", "Retirado na Agência", "Retornou ao Remetente", "Pedido Cancelado", "Etiqueta Expirada", "Trocou de Código"]);
+const finalizado = s => !!s && (FINAIS.has(s) || /^entregue/i.test(s));
+const ordem = (a, b) => b.data.localeCompare(a.data) || ((parseInt(a.erp) || 0) - (parseInt(b.erp) || 0));
+const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 4500);
+}
+async function api(path, body, headers = {}) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", body, headers });
+  const j = await r.json().catch(() => ({ erro: "Resposta inválida do programa." }));
+  if (!r.ok || j.erro) throw new Error(j.erro || "Erro " + r.status);
+  return j;
+}
+const postJson = (path, obj) => api(path, JSON.stringify(obj), { "Content-Type": "application/json" });
+
+let versaoVista = null;
+async function carregar() {
+  try {
+    const [h, v] = await Promise.all([api("/historico"), api("/versao")]);
+    envios = h; versaoVista = v.versao;
+  } catch { toast("O programa não respondeu. Feche e abra o Controle Correios Itu de novo."); return; }
+  render();
+}
+
+// outra pessoa salvou na mesma pasta (servidor): recarrega sem atrapalhar quem está digitando
+let importando = false;
+async function vigiarMudancas() {
+  try {
+    const { versao } = await api("/versao");
+    const ocupado = importando || document.activeElement?.matches("input:not([type=checkbox]), select");
+    if (versaoVista !== null && versao !== versaoVista && !ocupado) {
+      await carregar();
+      toast("Atualizado com alterações feitas em outro computador.");
+    }
+  } catch {}
+  setTimeout(vigiarMudancas, 15000);
+}
+
+async function verPasta() {
+  try {
+    const p = await api("/pasta");
+    $("pastaCaminho").textContent = p.pasta;
+    const tipo = $("pastaTipo");
+    tipo.className = "pill " + (p.rede ? "rede" : "off");
+    tipo.textContent = p.rede ? "servidor · compartilhada" : "só este computador";
+    $("pastaAviso").hidden = !p.aviso;
+    $("pastaAviso").textContent = p.aviso || "";
+  } catch {}
+}
+
+function opcoesStatus(atual) {
+  const lista = STATUS.map(([s]) => s);
+  if (atual && !lista.includes(atual)) lista.push(atual);
+  return lista.map(s => `<option value="${esc(s)}"${s === atual ? " selected" : ""}>${s ? esc(s) : "—"}</option>`).join("");
+}
+
+// envios do período (dia / mês / tudo), antes dos filtros de vendedor e status
+function noPeriodo() {
+  if (view.periodo === "tudo" || !view.dia) return envios;
+  if (view.periodo === "mes") return envios.filter(e => e.data.slice(0, 7) === view.dia.slice(0, 7));
+  return envios.filter(e => e.data === view.dia);
+}
+function linhasVisiveis() {
+  let l = noPeriodo();
+  if (view.vendedor) l = l.filter(e => e.vendedor === view.vendedor);
+  if (view.filtro === "pendentes") l = l.filter(e => !e.status);
+  else if (view.filtro === "entregues") l = l.filter(e => tom(e.status) === "ok");
+  else if (view.filtro === "problemas") l = l.filter(e => tom(e.status) === "bad");
+  const q = $("fBusca").value.trim().toUpperCase();
+  if (q) l = l.filter(e => e.erp.includes(q) || e.rastreio.includes(q) || (e.cliente || "").toUpperCase().includes(q));
+  return l.slice().sort(ordem);
+}
+function nomeEscopo() {
+  if (view.periodo === "tudo" || !view.dia) return "todo o histórico";
+  if (view.periodo === "mes") return mesDe(view.dia);
+  return fmtBr(view.dia);
+}
+
+function render() {
+  const porDia = {};
+  envios.forEach(e => { (porDia[e.data] ||= []).push(e); });
+  const dias = Object.keys(porDia).sort().reverse();
+  if (!view.dia || !porDia[view.dia]) view.dia = dias[0] || null;
+
+  // resumo do período e vendedor escolhidos
+  let base = noPeriodo();
+  if (view.vendedor) base = base.filter(e => e.vendedor === view.vendedor);
+  const cont = f => base.filter(f).length;
+  const total = base.length || 1;
+  $("stats").innerHTML = [
+    ["", "Envios", base.length],
+    ["pendentes", "Sem status", cont(e => !e.status)],
+    ["entregues", "Entregues", cont(e => tom(e.status) === "ok")],
+    ["problemas", "Com problema", cont(e => tom(e.status) === "bad")],
+  ].map(([f, rot, n]) => `<button type="button" class="stat" data-filtro="${f}" aria-pressed="${!!f && view.filtro === f}">
+      <small>${rot}</small><b>${n}</b>${f ? `<span class="pct">${Math.round(n / total * 100)}%</span>` : ""}</button>`).join("");
+
+  // vendedores: sempre todos do histórico, com a contagem do período (zerados ficam apagados)
+  const vend = {};
+  envios.forEach(e => { vend[e.vendedor || "(sem vendedor)"] ||= { n: 0, p: 0 }; });
+  noPeriodo().forEach(e => { const v = e.vendedor || "(sem vendedor)"; (vend[v] ||= { n: 0, p: 0 }); vend[v].n++; if (!e.status) vend[v].p++; });
+  $("vScope").textContent = "· " + nomeEscopo();
+  $("vendors").innerHTML = `<button type="button" class="chip" data-v="" aria-pressed="${!view.vendedor}">Todos</button>` +
+    Object.entries(vend).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0])).map(([v, c]) =>
+      `<button type="button" class="chip${c.n ? "" : " zero"}" data-v="${esc(v === "(sem vendedor)" ? "" : v)}" aria-pressed="${view.vendedor === v}">
+        ${esc(v.replace(/\s*-\s*ITU$/i, ""))}<span class="c">${c.n}</span>${c.p ? `<span class="p">${c.p}</span>` : ""}</button>`).join("");
+
+  // dias agrupados por mês, cada mês abre e fecha
+  $("noDays").hidden = dias.length > 0;
+  $("daysTools").hidden = !dias.length;
+  if (!mesesAbertos) mesesAbertos = new Set(view.dia ? [view.dia.slice(0, 7)] : []);
+  const doVendedor = d => view.vendedor ? porDia[d].filter(e => e.vendedor === view.vendedor) : porDia[d];
+  const contagem = lista => {
+    const fin = lista.filter(e => finalizado(e.status)).length, abe = lista.length - fin;
+    return `<span class="cnt${fin ? "" : " zero"}" title="${plural(fin, "finalizado", "finalizados")}"><span class="dot done"></span>${fin}</span>` +
+           `<span class="cnt${abe ? "" : " zero"}" title="${plural(abe, "em aberto", "em aberto")}"><span class="dot pend"></span>${abe}</span>`;
+  };
+  const meses = [];
+  dias.forEach(d => { const m = d.slice(0, 7); if (meses.at(-1)?.m !== m) meses.push({ m, dias: [] }); meses.at(-1).dias.push(d); });
+  $("dayList").innerHTML = meses.map(({ m, dias: ds }) => {
+    const aberto = mesesAbertos.has(m);
+    const cab = `<li><button type="button" class="mes" data-mes="${m}" aria-expanded="${aberto}">
+      <span><span class="chev" aria-hidden="true">${aberto ? "▾" : "▸"}</span>${mesDe(m + "-01")}</span>
+      <span class="n">${contagem(ds.flatMap(doVendedor))}</span>
+    </button></li>`;
+    if (!aberto) return cab;
+    return cab + ds.map(d => {
+      return `<li><button type="button" data-day="${d}" aria-current="${d === view.dia}">
+        <span>${fmtBr(d).slice(0, 5)}<span class="wd">${weekday(d)}</span></span>
+        <span class="n">${contagem(doVendedor(d))}</span>
+      </button></li>`;
+    }).join("");
+  }).join("");
+
+  // tabela
+  const linhas = linhasVisiveis();
+  const partes = ["CORREIOS ITU - TOTVS"];
+  if (view.vendedor) partes.push(view.vendedor.replace(/\s*-\s*ITU$/i, ""));
+  partes.push(nomeEscopo().toUpperCase());
+  $("sheetTitle").textContent = partes.join(" - ");
+  $("viewTitle").textContent = view.periodo === "dia" ? "Tabela TOTVS do dia" : view.periodo === "mes" ? "Envios do mês" : "Todo o histórico";
+  const filtroTxt = { pendentes: " sem status", entregues: " entregues", problemas: " com problema" }[view.filtro] || "";
+  $("viewInfo").textContent = plural(linhas.length, "envio", "envios") + filtroTxt + (view.vendedor ? ` de ${view.vendedor}` : "") + ` · ${nomeEscopo()}`;
+  $("fPeriodo").value = view.periodo;
+  $("abrirExcel").disabled = !view.dia;
+  $("exportar").disabled = !linhas.length;
+
+  marcados = new Set([...marcados].filter(r => linhas.some(e => e.id === r)));
+  const LIM = 1500;
+  $("rows").innerHTML = linhas.length ? linhas.slice(0, LIM).map(e => `<tr>
+      <td class="chk"><input type="checkbox" data-chk="${esc(e.id)}"${marcados.has(e.id) ? " checked" : ""} aria-label="Selecionar ${esc(e.rastreio)}"></td>
+      <td>${fmtBr(e.data)}</td><td>${copiavel(e.erp)}</td>
+      <td class="cli" data-id="${esc(e.id)}">${celulaCliente(e)}</td>
+      <td>${copiavel(e.vendedor)}</td>
+      <td class="mono" data-id="${esc(e.id)}">${celulaRastreio(e)}</td>
+      <td><span class="st-wrap"><select class="st s-${tom(e.status)}" data-st="${esc(e.id)}" aria-label="Status de ${esc(e.rastreio)}">${opcoesStatus(e.status || "")}</select>${e.status ? `<button type="button" class="cp-ic" data-copy="${esc(e.status)}" title="Copiar status" aria-label="Copiar status">${ICONE_COPIAR}</button>` : ""}</span>
+        ${e.ultimoEvento ? `<span class="ev" title="Consultado em ${esc(e.consultadoEm || "")}">${esc(e.ultimoEvento)}${e.ultimoEventoEm ? " · " + esc(fmtBr(e.ultimoEventoEm.slice(0, 10))) : ""}</span>` : ""}</td>
+    </tr>`).join("") + (linhas.length > LIM ? `<tr><td class="chk"></td><td colspan="6" class="sheet-empty">Mostrando ${LIM} de ${linhas.length}. Use o filtro de vendedor, período ou busca para ver o resto.</td></tr>` : "")
+    : `<tr><td class="chk"></td><td colspan="6" class="sheet-empty">${envios.length ? "Nada aqui com esse filtro." : "A tabela aparece aqui depois do primeiro arquivo."}</td></tr>`;
+  $("chkAll").checked = linhas.length > 0 && linhas.every(e => marcados.has(e.id));
+  atualizarBulk();
+}
+
+const ICONE_COPIAR = `<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 3.5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+function copiavel(valor, html) {
+  if (!valor) return "";
+  return `<button type="button" class="cp" data-copy="${esc(valor)}" title="Clique para copiar">${html ?? esc(valor)}</button>`;
+}
+async function copiar(btn) {
+  const valor = btn.dataset.copy;
+  let ok = false;
+  try { await navigator.clipboard.writeText(valor); ok = true; }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = valor; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+  }
+  if (!ok) { toast("Não consegui copiar. Selecione o texto e use Ctrl+C."); return; }
+  btn.classList.add("copiado");
+  setTimeout(() => btn.classList.remove("copiado"), 900);
+  toast("Copiado: " + valor);
+}
+
+const ehCodigo = s => /^[A-Z0-9]{6}$/.test(s || "");
+function celulaCliente(e) {
+  if (!e.cliente) return `<button type="button" class="falta" data-edit>+ nome do cliente</button>`;
+  if (ehCodigo(e.cliente)) return `<button type="button" class="falta" data-edit>código ${esc(e.cliente)} · pôr nome</button>`;
+  return `<span class="cli-row">${copiavel(e.cliente)}<button type="button" class="cp-ic" data-edit title="Editar nome do cliente" aria-label="Editar nome do cliente">✎</button></span>`;
+}
+function editarCliente(td) {
+  if (td.querySelector("input")) return;
+  const e = envios.find(x => x.id === td.dataset.id); if (!e) return;
+  const inp = document.createElement("input");
+  inp.className = "cli-in"; inp.value = ehCodigo(e.cliente) ? "" : (e.cliente || "");
+  inp.placeholder = "Nome do cliente"; inp.setAttribute("aria-label", "Nome do cliente de " + e.rastreio);
+  td.innerHTML = ""; td.appendChild(inp); inp.focus();
+  let feito = false;
+  const fim = async salvar => {
+    if (feito) return; feito = true;
+    const nome = inp.value.trim().replace(/\s+/g, " ");
+    if (!salvar || nome === (e.cliente || "") || !nome) { td.innerHTML = celulaCliente(e); return; }
+    try {
+      const r = await postJson("/cliente", { id: e.id, cliente: nome });
+      await carregar();
+      toast(r.aviso || (r.outros ? `Cliente salvo e aplicado em mais ${plural(r.outros, "envio", "envios")} com o mesmo código` : "Cliente salvo na planilha"));
+    } catch (err) { toast(err.message); td.innerHTML = celulaCliente(e); }
+  };
+  inp.addEventListener("keydown", k => { if (k.key === "Enter") fim(true); if (k.key === "Escape") fim(false); });
+  inp.addEventListener("blur", () => fim(true));
+}
+
+// a página dos Correios já abre com o código preenchido por ?objetos=; só falta o captcha
+const RASTREIO_OK = /^[A-Z]{2}\d{9}[A-Z]{2}$/;
+const URL_CORREIOS = "https://rastreamento.correios.com.br/app/index.php?objetos=";
+function celulaRastreio(e) {
+  const editar = `<button type="button" class="cp-ic" data-edit-rastreio title="Editar código de rastreio" aria-label="Editar código de rastreio">✎</button>`;
+  if (!RASTREIO_OK.test(e.rastreio)) return `<span class="cli-row"><button type="button" class="falta" data-edit-rastreio>${esc(e.rastreio)} · pôr código</button></span>`;
+  return `<span class="cli-row"><button type="button" class="cp" data-correios="${esc(e.rastreio)}" title="Abrir nos Correios (o código também é copiado)">${esc(e.rastreio)}</button>` +
+    `<button type="button" class="cp-ic" data-copy="${esc(e.rastreio)}" title="Copiar rastreio" aria-label="Copiar rastreio">${ICONE_COPIAR}</button>${editar}</span>`;
+}
+function abrirCorreios(btn) {
+  const cod = btn.dataset.correios;
+  window.open(URL_CORREIOS + encodeURIComponent(cod), "_blank");
+  navigator.clipboard?.writeText(cod).catch(() => {});
+  toast("Abrindo " + cod + " nos Correios. Se o campo vier vazio, cole com Ctrl+V.");
+}
+function editarRastreio(td) {
+  if (td.querySelector("input")) return;
+  const e = envios.find(x => x.id === td.dataset.id); if (!e) return;
+  const inp = document.createElement("input");
+  inp.className = "cli-in"; inp.style.minWidth = "150px"; inp.maxLength = 20;
+  inp.value = RASTREIO_OK.test(e.rastreio) ? e.rastreio : "";
+  inp.placeholder = "AB123456789BR"; inp.setAttribute("aria-label", "Código de rastreio do ERP " + e.erp);
+  td.innerHTML = ""; td.appendChild(inp); inp.focus(); inp.select();
+  let feito = false;
+  const fim = async salvar => {
+    if (feito) return; feito = true;
+    const cod = inp.value.replace(/\s+/g, "").toUpperCase();
+    if (!salvar || !cod || cod === e.rastreio) { td.innerHTML = celulaRastreio(e); return; }
+    try {
+      const r = await postJson("/rastreio", { id: e.id, rastreio: cod });
+      if (marcados.delete(e.id)) marcados.add(r.id);
+      await carregar();
+      toast(r.aviso || "Rastreio salvo na planilha");
+    } catch (err) { toast(err.message); td.innerHTML = celulaRastreio(e); }
+  };
+  inp.addEventListener("keydown", k => { if (k.key === "Enter") fim(true); if (k.key === "Escape") fim(false); });
+  inp.addEventListener("blur", () => fim(true));
+}
+
+function atualizarBulk() {
+  $("bulk").hidden = marcados.size === 0;
+  $("bulkN").textContent = plural(marcados.size, "selecionado:", "selecionados:");
+  $("bulkSync").disabled = !correios.pronto || correios.rodando;
+}
+
+async function salvarStatus(ids, status) {
+  try {
+    const r = await postJson("/status", { ids, status });
+    envios.forEach(e => { if (ids.includes(e.id)) { e.status = status; delete e.origemStatus; } });
+    toast(r.aviso || (ids.length > 1 ? `${ids.length} envios marcados como ${status || "sem status"}` : "Status salvo na planilha"));
+  } catch (err) { toast(err.message); }
+  render();
+}
+
+// ---------- importação ----------
+async function arquivosDoDrop(dt) {
+  const itens = [...dt.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!itens.length) return [...dt.files];
+  const out = [];
+  const lerPasta = dir => new Promise(res => {
+    const leitor = dir.createReader(), todos = [];
+    const lote = () => leitor.readEntries(es => { if (!es.length) return res(todos); todos.push(...es); lote(); }, () => res(todos));
+    lote();
+  });
+  const visitar = async ent => {
+    if (ent.isFile) out.push(await new Promise(res => ent.file(res, () => res(null))));
+    else if (ent.isDirectory) for (const filho of await lerPasta(ent)) await visitar(filho);
+  };
+  for (const ent of itens) await visitar(ent);
+  return out.filter(Boolean);
+}
+
+async function importar(lista) {
+  const arquivos = [...lista].filter(f => /\.(csv|txt|xlsx|xlsm)$/i.test(f.name) && !f.name.startsWith("~$"));
+  const result = $("result");
+  if (!arquivos.length) { result.textContent = "Nenhum arquivo CSV ou .xlsx encontrado."; return; }
+  const soma = { novos: 0, completados: 0, repetidos: 0, aguardando: 0, dias: new Set(), arquivos: 0, abertos: new Set(), erros: [] };
+  importando = true;
+  for (const [i, f] of arquivos.entries()) {
+    result.textContent = `Importando ${i + 1} de ${arquivos.length}: ${f.name}`;
+    try {
+      const r = await api("/importar", await f.arrayBuffer(), { "X-Nome-Arquivo": encodeURIComponent(f.name) });
+      soma.novos += r.novos; soma.completados += r.completados; soma.repetidos += r.repetidos;
+      soma.aguardando += r.aguardando || 0; soma.arquivos += r.arquivos.length;
+      r.diasAtualizados.forEach(d => soma.dias.add(d)); r.abertos.forEach(d => soma.abertos.add(d));
+    } catch (e) { soma.erros.push(`${f.name}: ${e.message}`); }
+  }
+  importando = false;
+  const partes = [
+    `<span><b class="ok">${soma.novos}</b> envios novos</span>`,
+    soma.completados ? `<span><b class="ok">${soma.completados}</b> completados com cliente ou status</span>` : "",
+    `<span>${soma.repetidos} já estavam iguais</span>`,
+    soma.arquivos ? `<span>${plural(soma.arquivos, "tabela gravada", "tabelas gravadas")} na pasta dos dados</span>` : "",
+    soma.aguardando ? `<span><b class="warn">${soma.aguardando}</b> pedidos sem rastreio guardados como aguardando código ou cancelado</span>` : "",
+    soma.abertos.size ? `<span><b class="warn">${soma.abertos.size}</b> tabelas estavam abertas no Excel e não foram regravadas</span>` : "",
+    ...soma.erros.map(m => `<span><b class="warn">Erro</b> ${esc(m)}</span>`),
+  ];
+  result.innerHTML = partes.filter(Boolean).join("");
+  await carregar();
+  if (soma.dias.size) { view.dia = [...soma.dias].sort().at(-1); abrirMesDoDia(); render(); }
+}
+
+// ---------- Correios ----------
+function mostrarErroCorreios(msg, quando) {
+  $("cErro").hidden = !msg;
+  $("cErroMsg").textContent = msg || "";
+  $("cErroQuando").textContent = quando ? "Tentativa em " + quando.replace("T", " ").slice(0, 16) : "";
+}
+async function verCorreios() {
+  try { correios = await api("/correios"); } catch { return; }
+  const pill = $("cPill"), info = $("cInfo"), prog = $("cProg");
+  const falhas = correios.falhas ? ` · ${plural(correios.falhas, "rastreio com erro", "rastreios com erro")}` : "";
+  if (correios.rodando) {
+    pill.className = "pill ok"; pill.textContent = "consultando";
+    prog.hidden = false; prog.max = correios.total || 1; prog.value = correios.feitos;
+    info.textContent = correios.etapa === "testando"
+      ? "Testando a conexão com os Correios…"
+      : `Consultando ${correios.feitos} de ${correios.total} · ${correios.atualizados} status mudaram${falhas}`;
+    mostrarErroCorreios(null);
+  } else {
+    prog.hidden = true;
+    if (correios.pronto) { pill.className = "pill ok"; pill.textContent = "pronto"; }
+    else { pill.className = "pill off"; pill.textContent = "não configurado"; }
+    if (correios.erro) {
+      pill.className = "pill bad"; pill.textContent = "erro";
+      info.textContent = correios.feitos ? `Parou em ${correios.feitos} de ${correios.total} · ${correios.atualizados} status atualizados${falhas}.` : "Nenhum rastreio foi consultado.";
+      mostrarErroCorreios(correios.erro, correios.fim);
+    } else {
+      mostrarErroCorreios(null);
+      if (correios.fim) info.textContent = `Última consulta: ${correios.feitos} rastreios, ${correios.atualizados} status atualizados${falhas} (${correios.fim.replace("T", " ").slice(0, 16)}).`;
+      else info.textContent = correios.pronto ? "Consulta o último evento de cada rastreio que ainda não foi finalizado." : correios.motivo;
+    }
+  }
+  $("cSync").disabled = !correios.pronto || correios.rodando;
+  $("cSync").textContent = correios.rodando ? "Consultando…" : "Atualizar status pelos Correios";
+  $("cParar").hidden = !correios.rodando || correios.etapa === "testando";
+  atualizarBulk();
+  if (correios.rodando) { clearTimeout(verCorreios.h); verCorreios.h = setTimeout(verCorreios, 1500); }
+  else if (verCorreios.estavaRodando) carregar();
+  verCorreios.estavaRodando = correios.rodando;
+}
+async function sincronizar(ids) {
+  // o servidor testa login + 1 rastreio antes de responder; enquanto isso mostra que está testando
+  $("cSync").disabled = true; $("cSync").textContent = "Testando conexão…";
+  $("cInfo").textContent = "Testando a conexão com os Correios…";
+  mostrarErroCorreios(null);
+  try {
+    const r = await postJson("/correios/atualizar", ids ? { ids } : {});
+    toast(`Conexão ok. Consultando ${r.total} rastreios nos Correios…`);
+    verCorreios.estavaRodando = true;
+  } catch (e) {
+    toast("Não foi possível consultar os Correios. Veja a mensagem no quadro Rastreio Correios.");
+  }
+  verCorreios();
+}
+
+// ---------- eventos ----------
+const drop = $("drop");
+$("pick").addEventListener("click", e => { e.stopPropagation(); $("file").click(); });
+$("pickDir").addEventListener("click", e => { e.stopPropagation(); $("dir").click(); });
+drop.addEventListener("click", () => $("file").click());
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+["file", "dir"].forEach(id => $(id).addEventListener("change", e => { if (e.target.files.length) importar(e.target.files); e.target.value = ""; }));
+["dragenter", "dragover"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+document.addEventListener("dragleave", e => { if (!e.relatedTarget) drop.classList.remove("over"); });
+document.addEventListener("drop", async e => { e.preventDefault(); drop.classList.remove("over"); importar(await arquivosDoDrop(e.dataTransfer)); });
+
+function abrirMesDoDia() {
+  if (!view.dia) return;
+  mesesAbertos = mesesAbertos || new Set();
+  mesesAbertos.add(view.dia.slice(0, 7)); guardarMeses();
+}
+function guardarMeses() { try { localStorage.setItem("meses-abertos", JSON.stringify([...mesesAbertos])); } catch {} }
+$("expandir").addEventListener("click", () => {
+  mesesAbertos = new Set(envios.map(e => e.data.slice(0, 7))); guardarMeses(); render();
+});
+$("recolher").addEventListener("click", () => {
+  mesesAbertos = new Set(); guardarMeses(); render();
+});
+$("dayList").addEventListener("click", e => {
+  const mes = e.target.closest("button[data-mes]");
+  if (mes) {
+    const m = mes.dataset.mes;
+    mesesAbertos.has(m) ? mesesAbertos.delete(m) : mesesAbertos.add(m);
+    guardarMeses(); render(); return;
+  }
+  const b = e.target.closest("button[data-day]"); if (!b) return;
+  view.dia = b.dataset.day; if (view.periodo === "tudo") view.periodo = "dia";
+  marcados.clear(); render();
+});
+$("stats").addEventListener("click", e => {
+  const b = e.target.closest(".stat"); if (!b) return;
+  const f = b.dataset.filtro || null;
+  view.filtro = view.filtro === f ? null : f; marcados.clear(); render();
+});
+$("vendors").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  view.vendedor = b.dataset.v; marcados.clear(); render();
+});
+$("fPeriodo").addEventListener("change", e => { view.periodo = e.target.value; marcados.clear(); render(); });
+$("fBusca").addEventListener("input", render);
+$("rows").addEventListener("change", e => {
+  if (e.target.dataset.st !== undefined) salvarStatus([e.target.dataset.st], e.target.value);
+  if (e.target.dataset.chk !== undefined) {
+    e.target.checked ? marcados.add(e.target.dataset.chk) : marcados.delete(e.target.dataset.chk);
+    $("chkAll").checked = linhasVisiveis().every(x => marcados.has(x.id));
+    atualizarBulk();
+  }
+});
+$("rows").addEventListener("click", e => {
+  const cp = e.target.closest("[data-copy]");
+  if (cp) { copiar(cp); return; }
+  const co = e.target.closest("[data-correios]");
+  if (co) { abrirCorreios(co); return; }
+  const er = e.target.closest("[data-edit-rastreio]");
+  if (er) { editarRastreio(er.closest("td[data-id]")); return; }
+  const ed = e.target.closest("[data-edit]");
+  if (ed) editarCliente(ed.closest("td[data-id]"));
+});
+$("chkAll").addEventListener("change", e => {
+  linhasVisiveis().forEach(x => e.target.checked ? marcados.add(x.id) : marcados.delete(x.id));
+  render();
+});
+$("bulkStatus").innerHTML = opcoesStatus("Entregue");
+$("bulkApply").addEventListener("click", async () => { await salvarStatus([...marcados], $("bulkStatus").value); marcados.clear(); render(); });
+$("bulkSync").addEventListener("click", () => sincronizar([...marcados]));
+$("cSync").addEventListener("click", () => sincronizar());
+$("cParar").addEventListener("click", () => postJson("/correios/parar", {}).then(() => toast("Parando depois do rastreio atual…")).catch(err => toast(err.message)));
+$("cConfig").addEventListener("click", () => postJson("/abrir", { config: true }).then(() => toast("Depois de salvar o arquivo, clique em qualquer lugar desta tela para atualizar.")).catch(err => toast(err.message)));
+$("abrirExcel").addEventListener("click", () => view.dia && postJson("/abrir", { dia: view.dia }).catch(err => toast(err.message)));
+$("abrirPasta").addEventListener("click", () => postJson("/abrir", {}).catch(err => toast(err.message)));
+$("exportar").addEventListener("click", () => {
+  const linhas = linhasVisiveis();
+  postJson("/exportar", { titulo: $("sheetTitle").textContent, ids: linhas.map(e => e.id) })
+    .then(r => toast("Exportado: " + r.arquivo)).catch(err => toast(err.message));
+});
+$("sair").addEventListener("click", async () => {
+  try { await postJson("/sair", {}); } catch {}
+  document.body.innerHTML = `<div class="wrap" style="padding-top:80px;text-align:center"><h1>Programa fechado</h1><p class="sub">Pode fechar esta janela. Para abrir de novo, use o Controle Correios Itu.exe.</p></div>`;
+});
+window.addEventListener("focus", verCorreios);
+
+$("trocarPasta").addEventListener("click", async () => {
+  toast("Escolha a pasta na janela que abriu (ela pode estar atrás desta).");
+  try {
+    const r = await postJson("/pasta/trocar", {});
+    if (r.cancelado) return;
+    await Promise.all([verPasta(), carregar()]);
+    toast(`Agora usando ${r.pasta}. ${plural(r.levados, "envio levado", "envios levados")} desta máquina, ${r.total} no total.`);
+  } catch (err) { toast(err.message); }
+});
+$("exportarTudo").addEventListener("click", async () => {
+  toast("Escolha a pasta de destino na janela que abriu. Pode levar alguns segundos.");
+  try {
+    const r = await postJson("/exportar-tudo", {});
+    if (r.cancelado) return;
+    toast(`Exportado: ${r.dias} dias em ${r.meses} meses, em ${r.pasta}` + (r.abertos.length ? ` (${r.abertos.length} arquivos estavam abertos no Excel)` : ""));
+  } catch (err) { toast(err.message); }
+});
+
+carregar();
+verCorreios();
+verPasta();
+setTimeout(vigiarMudancas, 15000);
+</script>
+</body>
+</html>

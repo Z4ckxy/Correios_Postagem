@@ -1,0 +1,61 @@
+COMO LIGAR A CONSULTA AUTOMATICA DE STATUS NOS CORREIOS
+========================================================
+
+O programa consegue consultar a API oficial dos Correios (SRO Rastro) e preencher
+o STATUS sozinho. Sem configurar, o botao fica desligado e o resto funciona normal.
+
+ATENCAO - REGRA DOS CORREIOS DESDE 16/10/2026
+---------------------------------------------
+A API so rastreia objetos postados no CONTRATO de quem esta consultando.
+Se os objetos saem com o cartao de postagem de outra empresa, e preciso que essa
+empresa faca a SUBDELEGACAO no CWS para o seu login (ela autoriza voce a consultar
+em nome dela). Sem isso, os Correios recusam (erros TOK-016 ou GTW-012).
+
+O QUE VOCE PRECISA
+------------------
+1. Login no portal Correios Web Services (CWS): https://cws.correios.com.br
+   ligado ao contrato dono do cartao de postagem (ou com subdelegacao dele).
+2. A API "SRO Rastro" (API 87) liberada para esse login.
+3. Em "Gestao de acesso a API's", gerar o CODIGO DE ACESSO (aparece uma vez so).
+4. O numero do cartao de postagem do contrato.
+
+COMO COLOCAR NO PROGRAMA
+------------------------
+1. Abra o programa e, no quadro "Rastreio Correios", clique em "Abrir configuracao".
+   Abre o arquivo correios_config.json (fica ao lado do .exe).
+2. Preencha e troque false por true no "ativo":
+
+   {
+     "ativo": true,
+     "usuario": "LOGIN_DO_CWS",
+     "codigo_acesso": "CODIGO_GERADO_NO_CWS",
+     "cartao_postagem": "0070000000",
+     "url_base": "https://api.correios.com.br",
+     "pausa_entre_consultas_seg": 0.3
+   }
+
+   - usuario: o login com que voce entra no CWS (se for CNPJ/CPF, so numeros).
+   - codigo_acesso: o "codigo de acesso", nao o "token" (token comeca com eyJ...).
+   - cartao_postagem: so numeros, com os zeros da frente.
+3. Salve, volte na tela e clique em "Atualizar status pelos Correios".
+   O programa testa o acesso primeiro: se der erro, aparece um quadro vermelho
+   explicando o motivo.
+
+COMO FUNCIONA
+-------------
+- Consulta so envios nao finalizados. Finalizados (Entregue, Retirado na Agencia,
+  Retornou ao Remetente, Pedido Cancelado, Etiqueta Expirada, Trocou de Codigo)
+  nao sao consultados de novo.
+- Preenche o STATUS e mostra embaixo o ultimo evento dos Correios com a data.
+- Um rastreio com problema e pulado; a consulta continua com os outros.
+- Da para marcar algumas linhas e clicar em "Consultar nos Correios".
+
+CUIDADOS
+--------
+- O correios_config.json tem o codigo de acesso da empresa. Nao envie para ninguem
+  e nao coloque junto ao compactar o programa para outras pessoas.
+- Erros comuns:
+  TOK-016 ... cartao de postagem de outro CNPJ, diferente do login.
+  GTW-012 ... a API SRO Rastro nao esta liberada para esse login.
+  401/403 ... login ou codigo de acesso errados.
+  429 ....... consultas demais seguidas: aumente "pausa_entre_consultas_seg" para 1.
