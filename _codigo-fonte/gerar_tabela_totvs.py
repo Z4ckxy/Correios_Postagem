@@ -1,4 +1,4 @@
-"""Leitura do DadosEntregues / tabelas TOTVS antigas e gravacao da Tabela Controle Correios Itu - TOTVS.
+"""Leitura do DadosEntregues / tabelas TOTVS antigas e gravacao da Tabela Controle Correios - TOTVS.
 
 Usado pelo programa (servidor.py). Pastas:
   PASTA     - onde fica o .exe (ou a pasta acima de _codigo-fonte): Modelos, configuracoes
@@ -31,7 +31,18 @@ SAIDA = PASTA / "Saida"
 
 MESES = ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho",
          "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-VENDEDOR_ITU = re.compile(r"-\s*ITU\s*$", re.IGNORECASE)
+FILIAL = ""  # sigla da filial (configuracao.json): "ITU" -> so vendedores "NOME - ITU"; vazio = todos
+
+
+def da_filial(vendedor):
+    return not FILIAL or bool(re.search(rf"-\s*{re.escape(FILIAL)}\s*$", vendedor, re.IGNORECASE))
+
+
+def titulo_base():
+    """CORREIOS ITU - TOTVS (com filial) ou CORREIOS - TOTVS."""
+    return " ".join(p for p in ("CORREIOS", FILIAL.upper()) if p) + " - TOTVS"
+
+
 RASTREIO_OK = re.compile(r"^[A-Z]{2}\d{9}[A-Z]{2}$")
 
 # grafias encontradas nas planilhas antigas -> status padrao
@@ -131,7 +142,7 @@ def _ler_dados_entregues(linhas):
     for r in linhas[inicio + 1:]:
         r = list(r) + [None] * (len(cab) - len(r))
         vendedor = normalizar_vendedor(r[idx["vendedor"]])
-        if not VENDEDOR_ITU.search(vendedor):
+        if not da_filial(vendedor):
             continue
         dia = _data(r[idx["data"]])
         if not dia:
@@ -161,7 +172,7 @@ def _ler_tabela_totvs(nome, linhas):
     if idx["rastreio"] is None:
         raise ValueError(f"{nome}: coluna RASTREIO/REGISTRO nao encontrada.")
 
-    # dia da tabela: titulo "CORREIOS ITU - TOTVS - dd/mm/aaaa" na primeira linha
+    # dia da tabela: titulo "CORREIOS ... - TOTVS - dd/mm/aaaa" na primeira linha
     dia_titulo = next((_data(c) for r in linhas[:inicio] for c in r if _data(c)), None)
 
     def pega(r, k):
@@ -191,7 +202,8 @@ def _ler_tabela_totvs(nome, linhas):
 def caminho_tabela(dia, base=None):
     """<base>/2026/10 - Outubro/Tabela ... - 21 de Outubro.xlsx"""
     pasta = (base or SAIDA) / str(dia.year) / f"{dia.month:02d} - {MESES[dia.month - 1]}"
-    return pasta / f"Tabela Controle Correios Itu - TOTVS - {dia.day:02d} de {MESES[dia.month - 1]}.xlsx"
+    nome = " ".join(p for p in ("Tabela Controle Correios", FILIAL.title()) if p)
+    return pasta / f"{nome} - TOTVS - {dia.day:02d} de {MESES[dia.month - 1]}.xlsx"
 
 
 def salvar_tabela(dia, envios, destino=None, titulo=None):
@@ -203,7 +215,7 @@ def salvar_tabela(dia, envios, destino=None, titulo=None):
     envios = sorted(envios, key=lambda e: (e["data"], int(e["erp"]) if e["erp"].isdigit() else 0))
     wb = openpyxl.load_workbook(MODELO)
     ws = wb.active
-    ws["A1"] = titulo or f"CORREIOS ITU - TOTVS - {dia:%d/%m/%Y}"
+    ws["A1"] = titulo or f"{titulo_base()} - {dia:%d/%m/%Y}"
 
     # cabecalho do modelo: DATA, ERP, CLIENTE, VENDEDOR, RASTREIO, STATUS
     estilo = [copy.copy(ws.cell(3, c)._style) for c in range(1, 7)]

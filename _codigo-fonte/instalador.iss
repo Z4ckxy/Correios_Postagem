@@ -1,27 +1,26 @@
-﻿; Instalador do Controle Correios Itu (Inno Setup 6). Gerado pelo gerar_exe.bat, que passa a versao:
+﻿; Instalador do Controle Correios (Inno Setup 6). Gerado pelo gerar_exe.bat, que passa a versao:
 ;   ISCC /DAppVersion=2026.10.27.1530 instalador.iss
-; Instala sem pedir administrador, em %LOCALAPPDATA%\Programs\Controle Correios Itu.
+; Instala sem pedir administrador, em %LOCALAPPDATA%\Programs\Controle Correios.
 ; Rodado com /VERYSILENT (botao "Atualizar agora" do programa) atualiza sem perguntar e abre o programa no fim.
 
-#define AppName "Controle Correios Itu"
-#define AppExe "Controle Correios Itu.exe"
+#define AppName "Controle Correios"
+#define AppExe "Controle Correios.exe"
 #ifndef AppVersion
   #define AppVersion "0"
 #endif
 
 [Setup]
-AppId={{8F3C2A51-6B7E-4D2A-9C1F-3E5B7A9D2C40}
+AppId={{3D6E1B94-27A5-4C8F-B1E0-5A9C7F2D4E61}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
-AppPublisher=Logística Itu
 DefaultDirName={autopf}\{#AppName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
 PrivilegesRequired=lowest
 OutputDir=..\instalador
-OutputBaseFilename=Instalar Controle Correios Itu
+OutputBaseFilename=Instalar Controle Correios
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

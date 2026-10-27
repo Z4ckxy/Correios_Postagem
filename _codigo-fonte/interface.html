@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Controle Correios Itu</title>
+<title>Controle Correios</title>
 <style>
 :root {
   --bg: #f3f4f1; --surface: #ffffff; --ink: #1b2430; --muted: #5d6673; --line: #d6d9d3;
@@ -141,7 +141,7 @@ table.totvs .chk { width: 34px; }
 <div class="wrap">
   <header>
     <div>
-      <h1>Correios Itu <span class="tag">TOTVS</span></h1>
+      <h1>Correios <span id="filialNome"></span> <span class="tag">TOTVS</span></h1>
       <p class="sub">Arraste o relatório de dados entregues ou tabelas TOTVS antigas. Tudo entra no histórico e as tabelas do dia são gravadas na pasta Saida.</p>
     </div>
     <div class="row">
@@ -156,6 +156,8 @@ table.totvs .chk { width: 34px; }
     <span class="pill" id="pastaTipo">…</span>
     <code id="pastaCaminho" class="caminho"></code>
     <span class="row" style="margin-left:auto">
+      <span class="small">Filial: <b id="filialTxt">…</b></span>
+      <button class="btn ghost sm" type="button" id="trocarFilial" title="Só entram vendedores terminados em - SIGLA (ex.: JOAO - ITU)">Filial…</button>
       <button class="btn ghost sm" type="button" id="trocarPasta" title="Escolher outra pasta, por exemplo no servidor Z:, para todos usarem a mesma">Trocar pasta…</button>
       <button class="btn sm" type="button" id="exportarTudo" title="Salvar todas as tabelas em Ano / Mês / Dia numa pasta que você escolher">Exportar tudo…</button>
     </span>
@@ -253,7 +255,7 @@ table.totvs .chk { width: 34px; }
       <div class="scroll">
         <table class="totvs">
           <thead>
-            <tr class="title"><th class="chk" style="border:0"></th><th colspan="6" id="sheetTitle">CORREIOS ITU - TOTVS</th></tr>
+            <tr class="title"><th class="chk" style="border:0"></th><th colspan="6" id="sheetTitle">CORREIOS - TOTVS</th></tr>
             <tr class="cols"><th class="chk"><input type="checkbox" id="chkAll" aria-label="Selecionar todos"></th><th>DATA</th><th>ERP</th><th>CLIENTE</th><th>VENDEDOR</th><th>RASTREIO</th><th>STATUS</th></tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -281,6 +283,9 @@ let marcados = new Set();
 let mesesAbertos = null;   // meses abertos na lista de dias; null = só o mês do dia escolhido
 try { const s = JSON.parse(localStorage.getItem("meses-abertos")); if (Array.isArray(s)) mesesAbertos = new Set(s); } catch {}
 let correios = { pronto: false };
+let filial = "";  // sigla da filial: só entram vendedores "NOME - SIGLA"; vazio = todos
+const tituloBase = () => ["CORREIOS", filial].filter(Boolean).join(" ") + " - TOTVS";
+const semFilial = v => filial ? v.replace(new RegExp("\\s*-\\s*" + filial.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i"), "") : v;
 
 const fmtBr = iso => iso.split("-").reverse().join("/");
 const mesDe = iso => { const [y, m] = iso.split("-"); return `${MESES[m - 1]} ${y}`; };
@@ -310,7 +315,7 @@ async function carregar() {
   try {
     const [h, v] = await Promise.all([api("/historico"), api("/versao")]);
     envios = h; versaoVista = v.versao;
-  } catch { toast("O programa não respondeu. Feche e abra o Controle Correios Itu de novo."); return; }
+  } catch { toast("O programa não respondeu. Feche e abra o Controle Correios de novo."); return; }
   render();
 }
 
@@ -335,6 +340,10 @@ async function verPasta() {
     const tipo = $("pastaTipo");
     tipo.className = "pill " + (p.rede ? "rede" : "off");
     tipo.textContent = p.rede ? "servidor · compartilhada" : "só este computador";
+    filial = p.filial || "";
+    $("filialNome").textContent = filial;
+    $("filialTxt").textContent = filial || "todas";
+    render();
     $("pastaAviso").hidden = !p.aviso;
     $("pastaAviso").textContent = p.aviso || "";
   } catch {}
@@ -395,7 +404,7 @@ function render() {
   $("vendors").innerHTML = `<button type="button" class="chip" data-v="" aria-pressed="${!view.vendedor}">Todos</button>` +
     Object.entries(vend).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0])).map(([v, c]) =>
       `<button type="button" class="chip${c.n ? "" : " zero"}" data-v="${esc(v === "(sem vendedor)" ? "" : v)}" aria-pressed="${view.vendedor === v}">
-        ${esc(v.replace(/\s*-\s*ITU$/i, ""))}<span class="c">${c.n}</span>${c.p ? `<span class="p">${c.p}</span>` : ""}</button>`).join("");
+        ${esc(semFilial(v))}<span class="c">${c.n}</span>${c.p ? `<span class="p">${c.p}</span>` : ""}</button>`).join("");
 
   // dias agrupados por mês, cada mês abre e fecha
   $("noDays").hidden = dias.length > 0;
@@ -426,8 +435,8 @@ function render() {
 
   // tabela
   const linhas = linhasVisiveis();
-  const partes = ["CORREIOS ITU - TOTVS"];
-  if (view.vendedor) partes.push(view.vendedor.replace(/\s*-\s*ITU$/i, ""));
+  const partes = [tituloBase()];
+  if (view.vendedor) partes.push(semFilial(view.vendedor));
   partes.push(nomeEscopo().toUpperCase());
   $("sheetTitle").textContent = partes.join(" - ");
   $("viewTitle").textContent = view.periodo === "dia" ? "Tabela TOTVS do dia" : view.periodo === "mes" ? "Envios do mês" : "Todo o histórico";
@@ -743,7 +752,7 @@ $("exportar").addEventListener("click", () => {
 });
 $("sair").addEventListener("click", async () => {
   try { await postJson("/sair", {}); } catch {}
-  document.body.innerHTML = `<div class="wrap" style="padding-top:80px;text-align:center"><h1>Programa fechado</h1><p class="sub">Pode fechar esta janela. Para abrir de novo, use o Controle Correios Itu.exe.</p></div>`;
+  document.body.innerHTML = `<div class="wrap" style="padding-top:80px;text-align:center"><h1>Programa fechado</h1><p class="sub">Pode fechar esta janela. Para abrir de novo, use o atalho Controle Correios.</p></div>`;
 });
 window.addEventListener("focus", verCorreios);
 
@@ -754,6 +763,15 @@ $("trocarPasta").addEventListener("click", async () => {
     if (r.cancelado) return;
     await Promise.all([verPasta(), carregar()]);
     toast(`Agora usando ${r.pasta}. ${plural(r.levados, "envio levado", "envios levados")} desta máquina, ${r.total} no total.`);
+  } catch (err) { toast(err.message); }
+});
+$("trocarFilial").addEventListener("click", async () => {
+  const nova = prompt('Sigla da filial (ex.: ITU). Só entram nas importações os vendedores terminados em "- SIGLA". Deixe vazio para todos.', filial);
+  if (nova === null) return;
+  try {
+    const r = await postJson("/filial", { filial: nova });
+    await verPasta(); render();
+    toast(r.filial ? `Filial ${r.filial}: só entram vendedores "- ${r.filial}" nas próximas importações.` : "Sem filial: entram todos os vendedores.");
   } catch (err) { toast(err.message); }
 });
 $("exportarTudo").addEventListener("click", async () => {

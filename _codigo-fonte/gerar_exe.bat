@@ -1,9 +1,9 @@
 @echo off
-rem Gera o "Controle Correios Itu.exe" (na pasta acima desta) e o instalador em ..\instalador.
+rem Gera o "Controle Correios.exe" (na pasta acima desta) e o instalador em ..\instalador.
 rem Precisa do Python (python.org) e do Inno Setup 6 (jrsoftware.org). So e usado para atualizar o programa.
 rem Para publicar: rode este arquivo, depois de commit e push. Os programas instalados avisam
 rem "Versao nova disponivel" na proxima vez que abrirem.
-title Gerar Controle Correios Itu.exe
+title Gerar Controle Correios.exe
 cd /d "%~dp0"
 
 rem versao = data e hora de agora; o programa compara com a publicada no GitHub
@@ -12,7 +12,7 @@ for /f %%v in ('powershell -NoProfile -Command "Get-Date -Format yyyy.MM.dd.HHmm
 echo Versao %VERSAO%
 
 python -m pip install --quiet --upgrade pyinstaller openpyxl
-python -m PyInstaller --noconfirm --onefile --windowed --name "Controle Correios Itu" ^
+python -m PyInstaller --noconfirm --onefile --windowed --name "Controle Correios" ^
   --add-data "%~dp0interface.html;." ^
   --add-data "%~dp0versao.txt;." ^
   --add-data "%~dp0..\Modelos\Modelo de Tabela TOTVS.xlsx;." ^
@@ -27,6 +27,6 @@ if not defined ISCC (echo Inno Setup 6 nao encontrado: o .exe foi gerado, o inst
 if errorlevel 1 (echo ERRO ao gerar o instalador. & pause & exit /b 1)
 
 echo.
-echo Pronto: Controle Correios Itu.exe e instalador\Instalar Controle Correios Itu.exe (versao %VERSAO%).
+echo Pronto: Controle Correios.exe e instalador\Instalar Controle Correios.exe (versao %VERSAO%).
 echo Agora de commit e push para os outros computadores receberem.
 pause

@@ -1,18 +1,25 @@
-CONTROLE CORREIOS ITU - TOTVS
-=============================
+CONTROLE CORREIOS - TOTVS
+=========================
 
-Monta a Tabela Controle Correios Itu - TOTVS de cada dia a partir do relatorio
+Monta a Tabela Controle Correios - TOTVS de cada dia a partir do relatorio
 DadosEntregues do TOTVS e guarda um historico com cliente e status de cada envio.
 
 INSTALAR E ABRIR
 ----------------
-Rode "Instalar Controle Correios Itu.exe" (pasta instalador do GitHub). Nao pede
-administrador; cria o atalho "Controle Correios Itu" na Area de Trabalho e no Menu Iniciar.
+Rode "Instalar Controle Correios.exe" (pasta instalador do GitHub). Nao pede
+administrador; cria o atalho "Controle Correios" na Area de Trabalho e no Menu Iniciar.
 O programa abre numa janela do Chrome. Para sair, feche a janela ou clique em "Fechar programa".
-Para desinstalar: Configuracoes > Aplicativos > Controle Correios Itu.
+Para desinstalar: Configuracoes > Aplicativos > Controle Correios.
 
 Na primeira vez o Windows pode avisar "O Windows protegeu o computador":
 clique em "Mais informacoes" e "Executar assim mesmo".
+
+PRIMEIRA VEZ
+------------
+1. "Trocar pasta...": escolha onde ficam os dados. Uma pasta no servidor da rede deixa
+   todos os computadores com o mesmo historico.
+2. "Filial...": a sigla da filial, se o TOTVS usa vendedores como "JOAO - ITU". Com
+   "ITU", so entram os vendedores terminados em "- ITU". Vazio = entram todos.
 
 ATUALIZACAO
 -----------
@@ -23,7 +30,8 @@ de novo sozinho. A pasta dos dados e as configuracoes continuam iguais.
 USO DO DIA A DIA
 ----------------
 1. Tire o relatorio DadosEntregues no TOTVS (CSV ou Excel).
-2. Arraste o arquivo para a tela. So os vendedores de ITU entram; nada e duplicado.
+2. Arraste o arquivo para a tela. So os vendedores da filial entram; nada e duplicado.
+   Pedido que estava sem rastreio ganha o codigo quando ele aparece num arquivo novo.
 3. A tabela do dia ja e gravada em  <pasta dos dados>\Ano\Mes\Tabela ... dia.xlsx
 4. Na tabela da tela:
    - escolha o STATUS de cada envio (ou marque varios e aplique de uma vez);
@@ -41,15 +49,12 @@ Outros botoes:
 
 PASTA DOS DADOS (SERVIDOR)
 --------------------------
-O arquivo configuracao.json, ao lado do .exe, diz onde ficam os dados. Hoje aponta para
-a pasta do servidor (\\servidor\Dados\Logistica\...\ITU), entao todos que abrirem este
-programa veem e editam o mesmo historico. Varias pessoas podem usar ao mesmo tempo;
-a tela se atualiza sozinha a cada 15 segundos.
+O arquivo configuracao.json, ao lado do .exe, guarda a pasta dos dados e a filial.
+Com a pasta no servidor, todos que abrirem o programa veem e editam o mesmo historico.
+Varias pessoas podem usar ao mesmo tempo; a tela se atualiza sozinha a cada 15 segundos.
+Sem pasta escolhida, o programa usa uma pasta "Saida" ao lado do .exe.
 
-Para usar outra pasta: botao "Trocar pasta..." no topo da tela.
-Se apagar o configuracao.json, o programa usa uma pasta "Saida" ao lado do .exe.
-
-Nao apague o arquivo historico_itu.json da pasta dos dados: e ele que guarda tudo.
+Nao apague o arquivo historico.json da pasta dos dados: e ele que guarda tudo.
 
 RASTREIO AUTOMATICO PELOS CORREIOS (opcional)
 ---------------------------------------------
@@ -61,12 +66,15 @@ PUBLICAR UMA VERSAO NOVA (quem mexe no codigo)
 ----------------------------------------------
 1. Altere o codigo em _codigo-fonte.
 2. Rode _codigo-fonte\gerar_exe.bat (precisa de Python e do Inno Setup 6). Ele gera o .exe,
-   o instalador\Instalar Controle Correios Itu.exe e o versao.txt com a data e hora.
+   o instalador\Instalar Controle Correios.exe e o versao.txt com a data e hora.
 3. De commit e push. Os programas instalados avisam na proxima vez que abrirem.
+
+A branch "itu" tem a versao da filial de Itu (pasta do servidor e filial ja configuradas);
+ela se atualiza pela propria branch. A branch "main" e a versao generica.
 
 PASTAS DO REPOSITORIO
 ---------------------
 instalador\ ................. o instalador (e o que os computadores baixam para atualizar)
-configuracao.json ........... aponta para a pasta dos dados no servidor
+configuracao.json ........... pasta dos dados e filial padrao do instalador
 Modelos\ .................... Modelo de Tabela TOTVS usado para gerar as planilhas
 _codigo-fonte\ .............. codigo do programa, so para quem for alterar

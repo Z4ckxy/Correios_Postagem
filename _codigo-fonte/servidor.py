@@ -1,6 +1,8 @@
-"""Programa visual: arraste o DadosEntregues (ou tabelas TOTVS antigas) e o historico de ITU e atualizado.
+"""Programa visual: arraste o DadosEntregues (ou tabelas TOTVS antigas) e o historico e atualizado.
 
-Roda como "Controle Correios Itu.exe" (gerado por _codigo-fonte/gerar_exe.bat): sobe um servidor
+A filial (configuracao.json, "filial": "ITU") limita a importacao aos vendedores "NOME - ITU".
+
+Roda como "Controle Correios.exe" (gerado por _codigo-fonte/gerar_exe.bat): sobe um servidor
 local em 127.0.0.1 e abre a tela numa janela do Chrome. Os dados podem ficar numa pasta do servidor
 da rede, compartilhada por todos (veja travar()).
 
@@ -33,7 +35,7 @@ TELA = RECURSOS / "interface.html"
 # versao.txt e o instalador sao gerados pelo gerar_exe.bat e publicados no GitHub
 URL_GITHUB = "https://raw.githubusercontent.com/Z4ckxy/Correios/main"
 URL_VERSAO = os.environ.get("CORREIOS_URL_VERSAO", URL_GITHUB + "/_codigo-fonte/versao.txt")
-URL_INSTALADOR = os.environ.get("CORREIOS_URL_INSTALADOR", URL_GITHUB + "/instalador/Instalar%20Controle%20Correios%20Itu.exe")
+URL_INSTALADOR = os.environ.get("CORREIOS_URL_INSTALADOR", URL_GITHUB + "/instalador/Instalar%20Controle%20Correios.exe")
 CODIGO_CLIENTE = re.compile(r"^[A-Z0-9]{6}$")
 _trava_local = threading.Lock()
 sync = {"rodando": False, "etapa": None, "feitos": 0, "total": 0, "atualizados": 0, "falhas": 0,
@@ -43,7 +45,9 @@ aviso_pasta = None  # preenchido quando a pasta configurada (ex.: Z:) nao esta a
 
 # ---------- pasta dos dados (local ou compartilhada no servidor) ----------
 def arq_historico():
-    return g.SAIDA / "historico_itu.json"
+    arq = g.SAIDA / "historico.json"
+    antigo = g.SAIDA / "historico_itu.json"  # nome usado pela versao de Itu
+    return antigo if antigo.exists() and not arq.exists() else arq
 
 
 def arq_clientes():
@@ -119,7 +123,9 @@ def ler_config_local():
 def aplicar_pasta_configurada():
     """Usa a pasta escolhida em configuracao.json; se ela nao abrir (servidor fora), usa a Saida local."""
     global aviso_pasta
-    pasta = ler_config_local().get("pasta_dados")
+    cfg = ler_config_local()
+    g.FILIAL = " ".join(str(cfg.get("filial") or "").split()).upper()
+    pasta = cfg.get("pasta_dados")
     if not pasta:
         return
     try:
@@ -171,7 +177,7 @@ def escolher_pasta(titulo):
 
 def trocar_pasta(pasta=None):
     global aviso_pasta
-    destino = Path(pasta) if pasta else escolher_pasta("Escolha a pasta dos dados (ex.: Z:\\Correios Itu)")
+    destino = Path(pasta) if pasta else escolher_pasta("Escolha a pasta dos dados (ex.: Z:\\Correios)")
     if not destino:
         return {"ok": False, "cancelado": True}
     destino = caminho_de_rede(destino)
@@ -191,6 +197,17 @@ def trocar_pasta(pasta=None):
         hist = carregar()
         regravar_dias(hist, {e["data"] for e in hist.values()})
     return {"ok": True, "pasta": str(destino), "anterior": str(antiga), "levados": novos, "total": total}
+
+
+def trocar_filial(filial):
+    filial = " ".join(str(filial or "").split()).upper()
+    if not re.fullmatch(r"[A-Z0-9 ]{0,20}", filial):
+        raise ValueError("Use so letras e numeros na sigla da filial (ex.: ITU).")
+    cfg = ler_config_local()
+    cfg["filial"] = filial
+    CONFIG_LOCAL.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    g.FILIAL = filial
+    return {"ok": True, "filial": filial}
 
 
 def exportar_tudo(pasta=None):
@@ -216,12 +233,12 @@ def exportar_tudo(pasta=None):
         nome_mes = g.MESES[dia.month - 1]
         arq = caminho_tabela(dia, destino).parent / f"Mes completo - {nome_mes} {dia.year}.xlsx"
         try:
-            salvar_tabela(dia, envios, destino=arq, titulo=f"CORREIOS ITU - TOTVS - {nome_mes.upper()} {dia.year}")
+            salvar_tabela(dia, envios, destino=arq, titulo=f"{g.titulo_base()} - {nome_mes.upper()} {dia.year}")
         except PermissionError:
             abertos.append(m)
-    geral = destino / "Historico completo - Correios Itu.xlsx"
+    geral = destino / (" ".join(p for p in ("Historico completo - Correios", g.FILIAL.title()) if p) + ".xlsx")
     try:
-        salvar_tabela(date.today(), list(hist.values()), destino=geral, titulo="CORREIOS ITU - TOTVS - HISTORICO COMPLETO")
+        salvar_tabela(date.today(), list(hist.values()), destino=geral, titulo=f"{g.titulo_base()} - HISTORICO COMPLETO")
     except PermissionError:
         abertos.append("geral")
     os.startfile(destino)
@@ -592,7 +609,7 @@ def checar_atualizacao():
     """Le a versao publicada no GitHub; se for maior que a deste programa, a tela oferece atualizar."""
     atualizacao.update(verificando=True, erro=None)
     try:
-        req = urllib.request.Request(URL_VERSAO, headers={"User-Agent": "ControleCorreiosItu", "Cache-Control": "no-cache"})
+        req = urllib.request.Request(URL_VERSAO, headers={"User-Agent": "ControleCorreios", "Cache-Control": "no-cache"})
         with urllib.request.urlopen(req, timeout=10) as r:
             publicada = r.read(100).decode("utf-8", "replace").strip()
         if re.fullmatch(r"[\d.]+", publicada) and _num(publicada) > _num(atualizacao["atual"]):
@@ -609,9 +626,9 @@ def instalar_atualizacao():
         raise ValueError("Nao tem versao nova para instalar.")
     if sync["rodando"]:
         raise ValueError("Espere a consulta dos Correios terminar (ou clique em Parar) antes de atualizar.")
-    destino = Path(os.environ.get("TEMP", str(g.PASTA))) / "Instalar Controle Correios Itu.exe"
+    destino = Path(os.environ.get("TEMP", str(g.PASTA))) / "Instalar Controle Correios.exe"
     try:
-        req = urllib.request.Request(URL_INSTALADOR, headers={"User-Agent": "ControleCorreiosItu"})
+        req = urllib.request.Request(URL_INSTALADOR, headers={"User-Agent": "ControleCorreios"})
         with urllib.request.urlopen(req, timeout=120) as r:
             dados = r.read()
     except OSError as e:
@@ -662,7 +679,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"versao": versao_dados()})
         elif self.path == "/pasta":
             self._json({"pasta": str(g.SAIDA), "padrao": str(g.PASTA / "Saida"),
-                        "rede": str(g.SAIDA).startswith("\\\\"), "aviso": aviso_pasta})
+                        "rede": str(g.SAIDA).startswith("\\\\"), "aviso": aviso_pasta, "filial": g.FILIAL})
         else:
             self.send_error(404)
 
@@ -692,6 +709,8 @@ class Handler(BaseHTTPRequestHandler):
                 instalar_atualizacao()
                 self._json({"ok": True})
                 encerrar()
+            elif self.path == "/filial":
+                self._json(trocar_filial(pedido.get("filial")))
             elif self.path == "/pasta/trocar":
                 self._json(trocar_pasta(pedido.get("pasta")))
             elif self.path == "/exportar-tudo":
@@ -749,7 +768,7 @@ def abrir_janela(url):
     if not chrome:
         return None
     # perfil separado: garante uma janela nova so do programa mesmo com o Chrome ja aberto
-    perfil = Path(os.environ.get("LOCALAPPDATA", str(g.SAIDA))) / "ControleCorreiosItu" / "chrome"
+    perfil = Path(os.environ.get("LOCALAPPDATA", str(g.SAIDA))) / "ControleCorreios" / "chrome"
     perfil.mkdir(parents=True, exist_ok=True)
     return subprocess.Popen([str(chrome), f"--app={url}", "--start-maximized", f"--user-data-dir={perfil}",
                              "--no-first-run", "--no-default-browser-check", "--disable-translate"])
@@ -767,7 +786,7 @@ def main():
         return
     Handler.servidor = servidor
     threading.Thread(target=checar_atualizacao, daemon=True).start()
-    print(f"Controle Correios Itu rodando em {url}")
+    print(f"Controle Correios rodando em {url}")
     print(f"Pasta dos dados: {g.SAIDA}")
 
     if SEM_NAVEGADOR:
