@@ -6,7 +6,9 @@ DadosEntregues do TOTVS e guarda um historico com cliente e status de cada envio
 
 COMO ABRIR
 ----------
-Dois cliques em "Controle Correios Itu.exe". Abre uma janela do Chrome com a tela.
+Dois cliques em "Abrir Controle Correios Itu.bat": ele baixa a versao nova do GitHub, se
+tiver, e abre o programa (o "Controle Correios Itu.exe" tambem abre direto, sem atualizar).
+Abre uma janela do Chrome com a tela.
 Nao precisa instalar nada. Para sair, feche a janela ou clique em "Fechar programa".
 
 Na primeira vez o Windows pode avisar "O Windows protegeu o computador":
@@ -26,6 +28,7 @@ USO DO DIA A DIA
 
 Outros botoes:
 - Vendedores / Periodo / busca: filtram a tabela.
+- Refazer planilha do dia: grava de novo a planilha do dia com o que esta no historico.
 - Exportar Excel: salva o que esta filtrado na tela.
 - Exportar tudo...: salva todas as tabelas (Ano / Mes / Dia) numa pasta que voce escolher.
 - Importar pasta: le tabelas TOTVS antigas e completa cliente e status.
@@ -45,6 +48,15 @@ Nao apague o arquivo historico_itu.json da pasta dos dados: e ele que guarda tud
 RASTREIO AUTOMATICO PELOS CORREIOS (opcional)
 ---------------------------------------------
 Veja "COMO CONFIGURAR A API DOS CORREIOS.txt". Sem configurar, o resto funciona normal.
+
+ATUALIZAR / INSTALAR EM OUTRA PASTA
+-----------------------------------
+Coloque "Atualizar Controle Correios Itu.bat" na pasta (pode ser uma copia antiga ou uma
+pasta vazia) e de dois cliques: ele baixa a ultima versao do GitHub. Nao precisa instalar
+nada (usa o PowerShell do Windows), so precisa de internet.
+Mantem o configuracao.json, o correios_config.json e a pasta Saida desta maquina.
+O correios_config.json (acesso a API dos Correios) NAO vem do GitHub: numa pasta nova,
+copie ele de um computador que ja esta configurado.
 
 PASTAS DESTE PACOTE
 -------------------

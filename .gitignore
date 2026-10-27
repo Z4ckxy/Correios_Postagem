@@ -1,0 +1,6 @@
+# credenciais da API dos Correios: cada maquina tem o seu (o repositorio e publico)
+correios_config.json
+# gerados ao rodar
+__pycache__/
+Saida/
+versao.txt

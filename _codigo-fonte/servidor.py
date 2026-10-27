@@ -300,13 +300,15 @@ def importar(nome, conteudo):
         clientes = carregar_clientes()
         agora = datetime.now().isoformat(timespec="seconds")
         novos, completados, aguardando, dias = 0, 0, 0, set()
+        # o envio e reconhecido pelo ERP: pedido que ja tem rastreio nao ganha outro
+        com_rastreio = {x["erp"]: x for x in hist.values() if x["erp"] and RASTREIO_OK.match(x["rastreio"])}
         for e in validos:
             if tipo == "dados" and e["cliente"]:
                 # o DadosEntregues traz o codigo; troca pelo nome se ja for conhecido
                 e["codCliente"] = e["cliente"]
                 e["cliente"] = clientes.get(e["cliente"], e["cliente"])
             id_ = chave(e)
-            atual = hist.get(id_)
+            atual = hist.get(id_) or com_rastreio.get(e["erp"])
             if atual is None:
                 espera = hist.pop("ERP-" + e["erp"], None) if e["erp"] else None
                 if espera:
@@ -315,7 +317,12 @@ def importar(nome, conteudo):
                     e["status"] = e.get("status") or ("" if espera.get("status") == "Pedido Cancelado" else espera.get("status", ""))
                     dias.add(espera["data"])
                 hist[id_] = {**e, "id": id_, "status": e.get("status", ""), "importadoEm": agora}
-                novos += 1
+                if e["erp"]:
+                    com_rastreio[e["erp"]] = hist[id_]
+                if espera:
+                    completados += 1
+                else:
+                    novos += 1
                 dias.add(e["data"])
                 continue
 
@@ -432,6 +439,21 @@ def mudar_rastreio(id_, novo):
         _, abertos = regravar_dias(hist, {e["data"]})
     aviso = "Rastreio salvo, mas a planilha do dia esta aberta no Excel." if abertos else None
     return {"ok": True, "id": novo_id, "aviso": aviso}
+
+
+def refazer_dia(dia):
+    """Grava de novo a tabela do dia a partir do historico (ex.: planilha apagada ou mexida a mao)."""
+    try:
+        date.fromisoformat(dia)
+    except ValueError:
+        raise ValueError("Escolha um dia na lista.")
+    with travar():
+        hist = carregar()
+        n = sum(1 for e in hist.values() if e["data"] == dia)
+        _, abertos = regravar_dias(hist, {dia})
+    if abertos:
+        raise ValueError("A planilha do dia esta aberta no Excel. Feche e tente de novo.")
+    return {"ok": True, "envios": n, "arquivo": caminho_tabela(date.fromisoformat(dia)).name}
 
 
 def exportar(titulo, ids):
@@ -588,6 +610,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(mudar_status(pedido.get("ids", []), str(pedido.get("status", "")).strip()))
             elif self.path == "/cliente":
                 self._json(mudar_cliente(str(pedido.get("id", "")), " ".join(str(pedido.get("cliente", "")).split())))
+            elif self.path == "/refazer":
+                self._json(refazer_dia(str(pedido.get("dia", ""))))
             elif self.path == "/rastreio":
                 self._json(mudar_rastreio(str(pedido.get("id", "")), str(pedido.get("rastreio", ""))))
             elif self.path == "/exportar":

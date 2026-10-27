@@ -233,6 +233,7 @@ table.totvs .chk { width: 34px; }
           </select>
           <input id="fBusca" type="search" placeholder="ERP, cliente ou rastreio" aria-label="Buscar">
           <button class="btn ghost" type="button" id="exportar">Exportar Excel</button>
+          <button class="btn ghost" type="button" id="refazer" title="Grava de novo a planilha do dia com o que está no histórico">Refazer planilha do dia</button>
           <button class="btn" type="button" id="abrirExcel">Abrir tabela do dia</button>
         </div>
       </div>
@@ -426,7 +427,7 @@ function render() {
   const filtroTxt = { pendentes: " sem status", entregues: " entregues", problemas: " com problema" }[view.filtro] || "";
   $("viewInfo").textContent = plural(linhas.length, "envio", "envios") + filtroTxt + (view.vendedor ? ` de ${view.vendedor}` : "") + ` · ${nomeEscopo()}`;
   $("fPeriodo").value = view.periodo;
-  $("abrirExcel").disabled = !view.dia;
+  $("abrirExcel").disabled = $("refazer").disabled = !view.dia;
   $("exportar").disabled = !linhas.length;
 
   marcados = new Set([...marcados].filter(r => linhas.some(e => e.id === r)));
@@ -585,7 +586,7 @@ async function importar(lista) {
   importando = false;
   const partes = [
     `<span><b class="ok">${soma.novos}</b> envios novos</span>`,
-    soma.completados ? `<span><b class="ok">${soma.completados}</b> completados com cliente ou status</span>` : "",
+    soma.completados ? `<span><b class="ok">${soma.completados}</b> completados com rastreio, cliente ou status</span>` : "",
     `<span>${soma.repetidos} já estavam iguais</span>`,
     soma.arquivos ? `<span>${plural(soma.arquivos, "tabela gravada", "tabelas gravadas")} na pasta dos dados</span>` : "",
     soma.aguardando ? `<span><b class="warn">${soma.aguardando}</b> pedidos sem rastreio guardados como aguardando código ou cancelado</span>` : "",
@@ -725,6 +726,8 @@ $("cSync").addEventListener("click", () => sincronizar());
 $("cParar").addEventListener("click", () => postJson("/correios/parar", {}).then(() => toast("Parando depois do rastreio atual…")).catch(err => toast(err.message)));
 $("cConfig").addEventListener("click", () => postJson("/abrir", { config: true }).then(() => toast("Depois de salvar o arquivo, clique em qualquer lugar desta tela para atualizar.")).catch(err => toast(err.message)));
 $("abrirExcel").addEventListener("click", () => view.dia && postJson("/abrir", { dia: view.dia }).catch(err => toast(err.message)));
+$("refazer").addEventListener("click", () => view.dia && postJson("/refazer", { dia: view.dia })
+  .then(r => toast(`Planilha de ${fmtBr(view.dia)} refeita com ${plural(r.envios, "envio", "envios")}`)).catch(err => toast(err.message)));
 $("abrirPasta").addEventListener("click", () => postJson("/abrir", {}).catch(err => toast(err.message)));
 $("exportar").addEventListener("click", () => {
   const linhas = linhasVisiveis();
