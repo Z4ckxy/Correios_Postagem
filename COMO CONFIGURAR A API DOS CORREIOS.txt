@@ -22,7 +22,9 @@ O QUE VOCE PRECISA
 COMO COLOCAR NO PROGRAMA
 ------------------------
 1. Abra o programa e, no quadro "Rastreio Correios", clique em "Abrir configuracao".
-   Abre o arquivo correios_config.json (fica ao lado do .exe).
+   Abre o arquivo correios_config.json. O programa usa o que estiver ao lado do .exe;
+   se nao tiver, usa o da pasta dos dados (servidor). Deixando so o do servidor, um
+   arquivo vale para todos os computadores.
 2. Preencha e troque false por true no "ativo":
 
    {
@@ -53,7 +55,7 @@ COMO FUNCIONA
 CUIDADOS
 --------
 - O correios_config.json tem o codigo de acesso da empresa. Nao envie para ninguem
-  e nao coloque junto ao compactar o programa para outras pessoas.
+  e nunca coloque no GitHub (o .gitignore ja impede).
 - Erros comuns:
   TOK-016 ... cartao de postagem de outro CNPJ, diferente do login.
   GTW-012 ... a API SRO Rastro nao esta liberada para esse login.

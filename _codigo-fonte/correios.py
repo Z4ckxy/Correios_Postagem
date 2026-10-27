@@ -18,9 +18,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
 
-from gerar_tabela_totvs import PASTA
+import gerar_tabela_totvs as g
 
-CONFIG = PASTA / "correios_config.json"
 CONFIG_PADRAO = {
     "ativo": False,
     "usuario": "",
@@ -42,12 +41,29 @@ def finalizado(status):
     return bool(status) and (status in FINAIS or status.lower().startswith("entregue"))
 
 
+def caminho_config():
+    """correios_config.json ao lado do programa; se nao tiver, o da pasta dos dados (servidor), que vale para todos."""
+    local = g.PASTA / "correios_config.json"
+    rede = g.SAIDA / "correios_config.json"
+    return rede if not local.exists() and rede.exists() else local
+
+
+def criar_config():
+    """Cria o correios_config.json em branco ao lado do programa (para abrir e preencher)."""
+    arq = caminho_config()
+    if not arq.exists():
+        arq.write_text(json.dumps(CONFIG_PADRAO, indent=2, ensure_ascii=False), encoding="utf-8")
+    return arq
+
+
 def carregar_config():
-    if not CONFIG.exists():
-        CONFIG.write_text(json.dumps(CONFIG_PADRAO, indent=2, ensure_ascii=False), encoding="utf-8")
+    arq = caminho_config()
+    if not arq.exists():
+        # nao cria aqui: um arquivo vazio ao lado do programa esconderia o do servidor
+        return dict(CONFIG_PADRAO)
     try:
         # strict=False aceita quebra de linha colada junto com o codigo de acesso
-        lido = json.loads(CONFIG.read_text(encoding="utf-8-sig"), strict=False)
+        lido = json.loads(arq.read_text(encoding="utf-8-sig"), strict=False)
     except ValueError as e:
         raise ValueError(f"O correios_config.json esta com erro de digitacao ({e}). Confira aspas e virgulas.")
     cfg = {**CONFIG_PADRAO, **lido}

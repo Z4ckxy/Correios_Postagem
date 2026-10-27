@@ -14,6 +14,7 @@ import subprocess
 import threading
 import time
 import traceback
+import urllib.request
 import webbrowser
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -29,6 +30,10 @@ PORTA = int(os.environ.get("CORREIOS_PORTA", 8765))
 SEM_NAVEGADOR = os.environ.get("CORREIOS_SEM_NAVEGADOR") == "1"  # usado so em teste
 CONFIG_LOCAL = g.PASTA / "configuracao.json"
 TELA = RECURSOS / "interface.html"
+# versao.txt e o instalador sao gerados pelo gerar_exe.bat e publicados no GitHub
+URL_GITHUB = "https://raw.githubusercontent.com/Z4ckxy/Correios/main"
+URL_VERSAO = os.environ.get("CORREIOS_URL_VERSAO", URL_GITHUB + "/_codigo-fonte/versao.txt")
+URL_INSTALADOR = os.environ.get("CORREIOS_URL_INSTALADOR", URL_GITHUB + "/instalador/Instalar%20Controle%20Correios%20Itu.exe")
 CODIGO_CLIENTE = re.compile(r"^[A-Z0-9]{6}$")
 _trava_local = threading.Lock()
 sync = {"rodando": False, "etapa": None, "feitos": 0, "total": 0, "atualizados": 0, "falhas": 0,
@@ -568,6 +573,68 @@ def iniciar_sync(ids=None):
     return {"ok": True, "total": len(alvo)}
 
 
+# ---------- atualizacao do programa (instalador publicado no GitHub) ----------
+def versao_atual():
+    try:
+        return (RECURSOS / "versao.txt").read_text(encoding="utf-8").strip() or "0"
+    except OSError:
+        return "0"
+
+
+def _num(v):
+    return tuple(int(p) for p in re.findall(r"\d+", v or ""))
+
+
+atualizacao = {"atual": versao_atual(), "nova": None, "verificando": False, "erro": None}
+
+
+def checar_atualizacao():
+    """Le a versao publicada no GitHub; se for maior que a deste programa, a tela oferece atualizar."""
+    atualizacao.update(verificando=True, erro=None)
+    try:
+        req = urllib.request.Request(URL_VERSAO, headers={"User-Agent": "ControleCorreiosItu", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            publicada = r.read(100).decode("utf-8", "replace").strip()
+        if re.fullmatch(r"[\d.]+", publicada) and _num(publicada) > _num(atualizacao["atual"]):
+            atualizacao["nova"] = publicada
+    except (OSError, ValueError) as e:
+        atualizacao["erro"] = f"Nao consegui ver se tem versao nova: {e}"
+    finally:
+        atualizacao["verificando"] = False
+
+
+def instalar_atualizacao():
+    """Baixa o instalador novo e roda ele em modo silencioso depois que este programa fechar."""
+    if not atualizacao["nova"]:
+        raise ValueError("Nao tem versao nova para instalar.")
+    if sync["rodando"]:
+        raise ValueError("Espere a consulta dos Correios terminar (ou clique em Parar) antes de atualizar.")
+    destino = Path(os.environ.get("TEMP", str(g.PASTA))) / "Instalar Controle Correios Itu.exe"
+    try:
+        req = urllib.request.Request(URL_INSTALADOR, headers={"User-Agent": "ControleCorreiosItu"})
+        with urllib.request.urlopen(req, timeout=120) as r:
+            dados = r.read()
+    except OSError as e:
+        raise ValueError(f"Nao consegui baixar a versao nova: {e}")
+    if not dados.startswith(b"MZ") or len(dados) < 1_000_000:
+        raise ValueError("O arquivo baixado nao parece o instalador. Tente de novo mais tarde.")
+    destino.write_bytes(dados)
+    # espera este programa fechar para o instalador poder trocar o .exe; o instalador abre o programa de novo
+    caminho = str(destino).replace("'", "''")
+    subprocess.Popen(
+        ["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command",
+         f"Start-Sleep 3; Start-Process -FilePath '{caminho}' -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'"],
+        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS)
+
+
+def encerrar():
+    chrome = getattr(Handler, "chrome", None)
+    if chrome and chrome.poll() is None:
+        chrome.terminate()
+    if getattr(Handler, "servidor", None):
+        threading.Thread(target=Handler.servidor.shutdown, daemon=True).start()
+
+
 class Handler(BaseHTTPRequestHandler):
     def _json(self, obj, status=200):
         corpo = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -589,6 +656,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(list(carregar().values()))
         elif self.path == "/correios":
             self._json({**correios.situacao(), **sync})
+        elif self.path == "/atualizacao":
+            self._json(atualizacao)
         elif self.path == "/versao":
             self._json({"versao": versao_dados()})
         elif self.path == "/pasta":
@@ -618,11 +687,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(exportar(str(pedido.get("titulo", "Relatorio")), pedido.get("ids", [])))
             elif self.path == "/sair":
                 self._json({"ok": True})
-                chrome = getattr(Handler, "chrome", None)
-                if chrome and chrome.poll() is None:
-                    chrome.terminate()
-                if getattr(Handler, "servidor", None):
-                    threading.Thread(target=Handler.servidor.shutdown, daemon=True).start()
+                encerrar()
+            elif self.path == "/atualizacao/instalar":
+                instalar_atualizacao()
+                self._json({"ok": True})
+                encerrar()
             elif self.path == "/pasta/trocar":
                 self._json(trocar_pasta(pedido.get("pasta")))
             elif self.path == "/exportar-tudo":
@@ -639,8 +708,7 @@ class Handler(BaseHTTPRequestHandler):
                         do_dia = [e for e in carregar().values() if e["data"] == pedido["dia"]]
                         salvar_tabela(date.fromisoformat(pedido["dia"]), do_dia)
                 elif pedido.get("config"):
-                    correios.carregar_config()
-                    alvo = correios.CONFIG
+                    alvo = correios.criar_config()
                 else:
                     g.SAIDA.mkdir(parents=True, exist_ok=True)
                     alvo = g.SAIDA
@@ -698,6 +766,7 @@ def main():
             webbrowser.open(url)
         return
     Handler.servidor = servidor
+    threading.Thread(target=checar_atualizacao, daemon=True).start()
     print(f"Controle Correios Itu rodando em {url}")
     print(f"Pasta dos dados: {g.SAIDA}")
 

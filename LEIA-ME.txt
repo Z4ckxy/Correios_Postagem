@@ -4,15 +4,21 @@ CONTROLE CORREIOS ITU - TOTVS
 Monta a Tabela Controle Correios Itu - TOTVS de cada dia a partir do relatorio
 DadosEntregues do TOTVS e guarda um historico com cliente e status de cada envio.
 
-COMO ABRIR
-----------
-Dois cliques em "Abrir Controle Correios Itu.bat": ele baixa a versao nova do GitHub, se
-tiver, e abre o programa (o "Controle Correios Itu.exe" tambem abre direto, sem atualizar).
-Abre uma janela do Chrome com a tela.
-Nao precisa instalar nada. Para sair, feche a janela ou clique em "Fechar programa".
+INSTALAR E ABRIR
+----------------
+Rode "Instalar Controle Correios Itu.exe" (pasta instalador do GitHub). Nao pede
+administrador; cria o atalho "Controle Correios Itu" na Area de Trabalho e no Menu Iniciar.
+O programa abre numa janela do Chrome. Para sair, feche a janela ou clique em "Fechar programa".
+Para desinstalar: Configuracoes > Aplicativos > Controle Correios Itu.
 
 Na primeira vez o Windows pode avisar "O Windows protegeu o computador":
 clique em "Mais informacoes" e "Executar assim mesmo".
+
+ATUALIZACAO
+-----------
+Toda vez que abre, o programa ve no GitHub se tem versao nova. Se tiver, aparece a faixa
+verde "Versao nova disponivel": clique em "Atualizar agora" e ele fecha, instala e abre
+de novo sozinho. A pasta dos dados e as configuracoes continuam iguais.
 
 USO DO DIA A DIA
 ----------------
@@ -48,20 +54,19 @@ Nao apague o arquivo historico_itu.json da pasta dos dados: e ele que guarda tud
 RASTREIO AUTOMATICO PELOS CORREIOS (opcional)
 ---------------------------------------------
 Veja "COMO CONFIGURAR A API DOS CORREIOS.txt". Sem configurar, o resto funciona normal.
+O correios_config.json nao vai para o GitHub (tem a senha). Deixe uma copia dele na pasta
+dos dados do servidor: todos os computadores instalados usam essa.
 
-ATUALIZAR / INSTALAR EM OUTRA PASTA
------------------------------------
-Coloque "Atualizar Controle Correios Itu.bat" na pasta (pode ser uma copia antiga ou uma
-pasta vazia) e de dois cliques: ele baixa a ultima versao do GitHub. Nao precisa instalar
-nada (usa o PowerShell do Windows), so precisa de internet.
-Mantem o configuracao.json, o correios_config.json e a pasta Saida desta maquina.
-O correios_config.json (acesso a API dos Correios) NAO vem do GitHub: numa pasta nova,
-copie ele de um computador que ja esta configurado.
+PUBLICAR UMA VERSAO NOVA (quem mexe no codigo)
+----------------------------------------------
+1. Altere o codigo em _codigo-fonte.
+2. Rode _codigo-fonte\gerar_exe.bat (precisa de Python e do Inno Setup 6). Ele gera o .exe,
+   o instalador\Instalar Controle Correios Itu.exe e o versao.txt com a data e hora.
+3. De commit e push. Os programas instalados avisam na proxima vez que abrirem.
 
-PASTAS DESTE PACOTE
--------------------
-Controle Correios Itu.exe ... o programa (unico arquivo obrigatorio)
+PASTAS DO REPOSITORIO
+---------------------
+instalador\ ................. o instalador (e o que os computadores baixam para atualizar)
 configuracao.json ........... aponta para a pasta dos dados no servidor
 Modelos\ .................... Modelo de Tabela TOTVS usado para gerar as planilhas
 _codigo-fonte\ .............. codigo do programa, so para quem for alterar
-                              (gerar_exe.bat cria o .exe de novo; precisa de Python)
