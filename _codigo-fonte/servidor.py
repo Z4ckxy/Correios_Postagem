@@ -31,7 +31,7 @@ SEM_NAVEGADOR = os.environ.get("CORREIOS_SEM_NAVEGADOR") == "1"  # usado so em t
 CONFIG_LOCAL = g.PASTA / "configuracao.json"
 TELA = RECURSOS / "interface.html"
 # versao.txt e o instalador sao gerados pelo gerar_exe.bat e publicados no GitHub
-URL_GITHUB = "https://raw.githubusercontent.com/Z4ckxy/Correios/main"
+URL_GITHUB = "https://raw.githubusercontent.com/Z4ckxy/Correios/itu"  # branch de Itu
 URL_VERSAO = os.environ.get("CORREIOS_URL_VERSAO", URL_GITHUB + "/_codigo-fonte/versao.txt")
 URL_INSTALADOR = os.environ.get("CORREIOS_URL_INSTALADOR", URL_GITHUB + "/instalador/Instalar%20Controle%20Correios%20Itu.exe")
 CODIGO_CLIENTE = re.compile(r"^[A-Z0-9]{6}$")
