@@ -697,7 +697,8 @@ def instalar_atualizacao():
     subprocess.Popen(
         ["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command",
          f"Start-Sleep 3; Start-Process -FilePath '{caminho}' -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'"],
-        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS)
+        # sem DETACHED_PROCESS: com ele o PowerShell (sem console) morre na hora e o instalador nunca roda
+        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP)
 
 
 def encerrar():
