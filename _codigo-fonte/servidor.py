@@ -109,6 +109,42 @@ def caminho_de_rede(p):
     return p
 
 
+NOMES_DRIVE = ("Meu Drive", "My Drive", "Drives compartilhados", "Shared drives")
+
+
+def rotulo_unidade(letra):
+    """Nome da unidade no Windows ("Google Drive" na unidade do Drive para computador)."""
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(261)
+        if ctypes.windll.kernel32.GetVolumeInformationW(f"{letra}\\", buf, len(buf), None, None, None, None, 0):
+            return buf.value
+    except (AttributeError, OSError):
+        pass
+    return ""
+
+
+def eh_google_drive(p):
+    p = Path(p)
+    return any(parte in NOMES_DRIVE for parte in p.parts[1:2]) or rotulo_unidade(p.drive) == "Google Drive"
+
+
+def achar_no_google_drive(p):
+    """Mesma pasta do Google Drive em outro PC: a letra (G:, H:...) e "Meu Drive"/"My Drive" podem mudar."""
+    p = Path(p)
+    if len(p.parts) < 2 or p.parts[1] not in NOMES_DRIVE:
+        return None
+    raiz = {"Meu Drive": ("Meu Drive", "My Drive"), "My Drive": ("My Drive", "Meu Drive"),
+            "Drives compartilhados": ("Drives compartilhados", "Shared drives"),
+            "Shared drives": ("Shared drives", "Drives compartilhados")}[p.parts[1]]
+    for letra in "GHIJKLMNOPQRSTUVWXYZDEF":
+        for nome in raiz:
+            alt = Path(f"{letra}:\\", nome, *p.parts[2:])
+            if alt.is_dir():
+                return alt
+    return None
+
+
 def ler_config_local():
     try:
         return json.loads(CONFIG_LOCAL.read_text(encoding="utf-8"))
@@ -122,13 +158,16 @@ def aplicar_pasta_configurada():
     pasta = ler_config_local().get("pasta_dados")
     if not pasta:
         return
+    if not Path(pasta).is_dir():
+        # Google Drive com outra letra ou em ingles neste PC: usa a mesma pasta, sem criar uma vazia
+        pasta = achar_no_google_drive(pasta) or pasta
     try:
         Path(pasta).mkdir(parents=True, exist_ok=True)
         g.SAIDA = Path(pasta)
         aviso_pasta = None
     except OSError:
-        aviso_pasta = (f"Nao consegui abrir a pasta {pasta}. Confira se o servidor (Z:) esta conectado. "
-                       f"Por enquanto os dados estao sendo salvos neste computador, em {g.SAIDA}.")
+        aviso_pasta = (f"Nao consegui abrir a pasta {pasta}. Confira se o servidor (Z:) ou o Google Drive "
+                       f"esta conectado. Por enquanto os dados estao sendo salvos neste computador, em {g.SAIDA}.")
 
 
 def mesclar_em(destino):
@@ -228,11 +267,25 @@ def exportar_tudo(pasta=None):
     return {"ok": True, "pasta": str(destino), "dias": len(por_dia), "meses": len(por_mes), "abertos": abertos}
 
 
+def ler_json(arq):
+    """Arquivo que ainda nao existe = vazio. Arquivo que nao deu para ler e erro, nunca vazio:
+    no Google Drive ele pode estar no meio da sincronizacao, e devolver vazio faria a proxima
+    gravacao apagar o historico inteiro."""
+    erro = None
+    for _ in range(6):
+        try:
+            return json.loads(arq.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError) as e:
+            erro = e
+            time.sleep(0.5)
+    raise ValueError(f"Nao consegui ler {arq.name} ({erro}). Se a pasta e do Google Drive, "
+                     "espere ele terminar de sincronizar e tente de novo.")
+
+
 def carregar():
-    try:
-        return json.loads(arq_historico().read_text(encoding="utf-8"))
-    except (FileNotFoundError, ValueError):
-        return {}
+    return ler_json(arq_historico())
 
 
 def gravar(dados, caminho=None):
@@ -249,10 +302,7 @@ def chave(e):
 
 def carregar_clientes():
     """Codigo do cliente no TOTVS -> nome, aprendido das tabelas e das edicoes na tela."""
-    try:
-        return json.loads(arq_clientes().read_text(encoding="utf-8"))
-    except (FileNotFoundError, ValueError):
-        return {}
+    return ler_json(arq_clientes())
 
 
 def eh_codigo(s):
@@ -653,7 +703,10 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(corpo)
         elif self.path == "/historico":
-            self._json(list(carregar().values()))
+            try:
+                self._json(list(carregar().values()))
+            except ValueError as e:
+                self._json({"erro": str(e)}, 503)
         elif self.path == "/correios":
             self._json({**correios.situacao(), **sync})
         elif self.path == "/atualizacao":
@@ -661,8 +714,9 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/versao":
             self._json({"versao": versao_dados()})
         elif self.path == "/pasta":
-            self._json({"pasta": str(g.SAIDA), "padrao": str(g.PASTA / "Saida"),
-                        "rede": str(g.SAIDA).startswith("\\\\"), "aviso": aviso_pasta})
+            drive = eh_google_drive(g.SAIDA)
+            self._json({"pasta": str(g.SAIDA), "padrao": str(g.PASTA / "Saida"), "drive": drive,
+                        "rede": drive or str(g.SAIDA).startswith("\\\\"), "aviso": aviso_pasta})
         else:
             self.send_error(404)
 

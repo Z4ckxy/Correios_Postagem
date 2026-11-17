@@ -310,7 +310,10 @@ async function carregar() {
   try {
     const [h, v] = await Promise.all([api("/historico"), api("/versao")]);
     envios = h; versaoVista = v.versao;
-  } catch { toast("O programa não respondeu. Feche e abra o Controle Correios Itu de novo."); return; }
+  } catch (err) {
+    toast(err instanceof TypeError ? "O programa não respondeu. Feche e abra o Controle Correios Itu de novo." : err.message);
+    return;
+  }
   render();
 }
 
@@ -334,7 +337,7 @@ async function verPasta() {
     $("pastaCaminho").textContent = p.pasta;
     const tipo = $("pastaTipo");
     tipo.className = "pill " + (p.rede ? "rede" : "off");
-    tipo.textContent = p.rede ? "servidor · compartilhada" : "só este computador";
+    tipo.textContent = p.drive ? "Google Drive · compartilhada" : p.rede ? "servidor · compartilhada" : "só este computador";
     $("pastaAviso").hidden = !p.aviso;
     $("pastaAviso").textContent = p.aviso || "";
   } catch {}
